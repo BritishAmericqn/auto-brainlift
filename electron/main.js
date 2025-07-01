@@ -134,7 +134,12 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
           QUALITY_AGENT_ENABLED: currentProject.settings.agents?.quality?.enabled !== false ? 'true' : 'false',
           QUALITY_AGENT_MODEL: currentProject.settings.agents?.quality?.model || 'gpt-4-turbo',
           DOCUMENTATION_AGENT_ENABLED: currentProject.settings.agents?.documentation?.enabled !== false ? 'true' : 'false',
-          DOCUMENTATION_AGENT_MODEL: currentProject.settings.agents?.documentation?.model || 'gpt-4-turbo'
+          DOCUMENTATION_AGENT_MODEL: currentProject.settings.agents?.documentation?.model || 'gpt-4-turbo',
+          // Pass Cursor chat settings
+          CURSOR_CHAT_ENABLED: globalSettings.cursorChatEnabled ? 'true' : 'false',
+          CURSOR_CHAT_PATH: globalSettings.cursorChatPath || '',
+          CURSOR_CHAT_MODE: globalSettings.cursorChatMode || 'light',
+          CURSOR_CHAT_INCLUDE_IN_SUMMARY: globalSettings.cursorChatIncludeInSummary !== false ? 'true' : 'false'
         }
       });
       

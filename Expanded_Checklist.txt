@@ -253,35 +253,49 @@ Auto-Brainlift Expanded Build Checklist (Line-by-Line for Cursor)
 🔟 CONFIGURABLE MULTI-AGENT SYSTEM
 ==========================================================
 
-- [ ] Create base agent framework:
-      - Abstract agent class
-      - Shared state management
+- [x] Create base agent framework:
+      - Abstract agent class (BaseAgent, SpecializedAgent)
+      - Shared state management (AgentState)
       - Result aggregation
 
-- [ ] Implement specialized agents:
+- [x] Implement specialized agents:
       - Security scanner (patterns + LLM)
       - Code quality analyzer
       - Documentation generator
       - Each with cost estimates
 
-- [ ] Build agent configuration UI:
+- [x] Build agent configuration UI:
       - Toggle switches per agent
       - Cost preview per agent
-      - Priority ordering
-      - Custom prompt editing
+      - Execution mode selector (parallel/sequential/priority)
+      - Model selection per agent (GPT-4/GPT-3.5)
 
-- [ ] Add budget allocation system:
-      - Percentage-based allocation
-      - Dynamic adjustment based on usage
-      - Visual budget pie chart
+- [x] Add budget allocation system:
+      - Integration with existing budget manager
+      - Token tracking per agent
+      - Cost estimation in UI
 
-- [ ] Create orchestration logic:
+- [x] Create orchestration logic:
       - Parallel execution when budget allows
       - Sequential fallback for tight budgets
+      - Priority-based execution mode
       - Result merging and deduplication
+
+- [x] Generate detailed error logs:
+      - Separate error_log.md file with all issues
+      - Structured format with recommendations
+      - Severity levels and impact assessment
+
+- [x] Implement flexible document viewer:
+      - Dropdown selectors for document type
+      - Historical file browser
+      - Mix-and-match panel viewing
 
 ✅ Pitfall Guard:
 > Keep agents independent. One agent failure shouldn't break others.
+> FIXED: Python imports when running from Electron (PYTHONPATH + sys.path)
+> FIXED: Cache workflow to run agents BEFORE generating summaries
+> FIXED: Agent results now properly integrated into output files
 
 ==========================================================
 1️⃣1️⃣ PRODUCTION HARDENING & MONITORING

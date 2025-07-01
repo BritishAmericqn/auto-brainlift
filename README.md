@@ -25,6 +25,7 @@ See [PHASE2_CACHING_GUIDE.md](PHASE2_CACHING_GUIDE.md) for full details.
 - 💰 **Budget Management**: Per-commit token limits with usage tracking
 - 📊 **Analytics Dashboard**: Real-time cache performance and cost metrics
 - 🔐 **Project Isolation**: Complete data separation between projects
+- 💬 **Cursor Chat Integration**: Optionally analyze development context from Cursor chats (Beta)
 
 ## Quick Start
 
@@ -113,6 +114,7 @@ auto-brainlift/
 │   │   ├── exact_cache.py
 │   │   └── semantic_cache.py
 │   ├── langgraph_agent.py    # Main summarization agent
+│   ├── cursor_chat_reader.py # Cursor chat integration (NEW)
 │   ├── git_hook_handler.py   # Git hook integration
 │   ├── retry_manager.py      # Retry queue management
 │   └── budget_manager.py     # Token budget tracking (NEW)
@@ -158,6 +160,12 @@ SKIP_EXISTING_COMMITS=true
 # Budget Management (NEW)
 BUDGET_ENABLED=false
 COMMIT_TOKEN_LIMIT=10000
+
+# Cursor Chat Integration (Beta)
+CURSOR_CHAT_ENABLED=false
+CURSOR_CHAT_PATH=  # Leave empty for auto-detection
+CURSOR_CHAT_MODE=light  # Options: light (default), full
+CURSOR_CHAT_INCLUDE_IN_SUMMARY=true  # Set to false to save tokens
 ```
 
 ### Customizing Prompts
@@ -249,6 +257,14 @@ node mcp-integration/mcp-server.js
 ```
 
 See [mcp-integration/README.md](mcp-integration/README.md) for setup instructions.
+
+### Cursor Chat Integration
+Analyze your development conversations to provide richer context in summaries:
+- Privacy-first: opt-in feature, disabled by default
+- Timestamp-based: only analyzes chats between commits
+- Development insights: extracts key decisions, bug fixes, and implementation notes
+
+See [CURSOR_CHAT_INTEGRATION.md](CURSOR_CHAT_INTEGRATION.md) for setup and usage.
 
 ### Planned Features
 - **Multi-Project Support**: Manage summaries across multiple repositories

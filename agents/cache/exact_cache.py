@@ -69,9 +69,8 @@ class ExactCache(CacheBase):
         self.stats['sets'] += 1
         logger.debug(f"Cached result for key: {key[:8]}...")
         
-        # Persist to disk periodically
-        if self.stats['sets'] % 10 == 0:
-            self._save_cache()
+        # Always persist to disk to ensure cache works between runs
+        self._save_cache()
     
     def delete(self, key: str) -> bool:
         """Delete specific key from cache"""

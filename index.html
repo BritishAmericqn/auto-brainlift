@@ -847,6 +847,56 @@
                     </div>
                 </div>
                 
+                <h3>Cursor Chat Integration (Beta)</h3>
+                
+                <div class="form-group">
+                    <label>Enable Cursor Chat Analysis</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="cursorChatEnabled" name="cursorChatEnabled">
+                        <label for="cursorChatEnabled">Include Cursor chat history in summaries (opt-in)</label>
+                    </div>
+                    <div class="help-text">
+                        Analyzes your Cursor chat conversations to provide development context
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cursorChatPath">Cursor Data Path (Optional)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="cursorChatPath" name="cursorChatPath" placeholder="Auto-detect based on OS" style="flex: 1;">
+                        <button type="button" id="browseCursorPath" class="button-secondary" style="padding: 8px 16px;">Browse</button>
+                    </div>
+                    <div class="help-text">
+                        Leave empty to auto-detect. Common locations:<br>
+                        macOS: ~/Library/Application Support/Cursor<br>
+                        Windows: %APPDATA%\Cursor<br>
+                        Linux: ~/.config/Cursor
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cursorChatMode">Processing Mode</label>
+                    <select id="cursorChatMode" name="cursorChatMode">
+                        <option value="light">Light Analysis (Quick summary)</option>
+                        <option value="full">Full Analysis (Detailed insights)</option>
+                    </select>
+                    <div class="help-text">
+                        Light: Analyzes only chats since your last commit (Recommended)<br>
+                        Full: Analyzes chats from the last 7 days for historical context
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Include Chat Summaries in Output</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="cursorChatIncludeInSummary" name="cursorChatIncludeInSummary" checked>
+                        <label for="cursorChatIncludeInSummary">Include chat context in generated summaries</label>
+                    </div>
+                    <div class="help-text">
+                        Disable to save tokens - chat history will be read but not sent to GPT-4
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <button type="submit" class="button">Save Settings</button>
                 </div>
@@ -1266,6 +1316,16 @@
             document.getElementById('documentationAgentModel').value = 
                 globalSettings.agents?.documentation?.model || 'gpt-4-turbo';
                 
+            // Cursor chat settings
+            document.getElementById('cursorChatEnabled').checked = 
+                globalSettings.cursorChatEnabled || false;
+            document.getElementById('cursorChatPath').value = 
+                globalSettings.cursorChatPath || '';
+            document.getElementById('cursorChatMode').value = 
+                globalSettings.cursorChatMode || 'light';
+            document.getElementById('cursorChatIncludeInSummary').checked = 
+                globalSettings.cursorChatIncludeInSummary !== false;
+                
             // Update cost preview
             updateAgentCostPreview();
         }
@@ -1302,7 +1362,12 @@
                         enabled: document.getElementById('documentationAgentEnabled').checked,
                         model: document.getElementById('documentationAgentModel').value
                     }
-                }
+                },
+                // Cursor chat settings
+                cursorChatEnabled: document.getElementById('cursorChatEnabled').checked,
+                cursorChatPath: document.getElementById('cursorChatPath').value,
+                cursorChatMode: document.getElementById('cursorChatMode').value,
+                cursorChatIncludeInSummary: document.getElementById('cursorChatIncludeInSummary').checked
             };
             
             try {
@@ -1583,6 +1648,22 @@
         document.getElementById('qualityAgentModel').addEventListener('change', updateAgentCostPreview);
         document.getElementById('documentationAgentEnabled').addEventListener('change', updateAgentCostPreview);
         document.getElementById('documentationAgentModel').addEventListener('change', updateAgentCostPreview);
+        
+        // Cursor chat path browse button
+        document.getElementById('browseCursorPath').addEventListener('click', async () => {
+            try {
+                const result = await window.electronAPI.dialog.selectDirectory();
+                
+                if (!result.success || result.canceled) {
+                    return; // User canceled
+                }
+                
+                // Update the input field with the selected path
+                document.getElementById('cursorChatPath').value = result.path;
+            } catch (error) {
+                showStatus(`Error selecting directory: ${error.message}`, 'error');
+            }
+        });
         
         // Cache & Budget event listeners
         clearCacheBtn.addEventListener('click', clearCache);

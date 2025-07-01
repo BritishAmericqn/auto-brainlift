@@ -8,7 +8,7 @@ import os
 import sys
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
@@ -25,6 +25,7 @@ import git
 from cache import CacheManager
 from budget_manager import BudgetManager
 from agent_orchestrator import AgentOrchestrator
+from cursor_chat_reader import CursorChatReader
 
 # Load environment variables
 load_dotenv()
@@ -87,6 +88,10 @@ class GitCommitSummarizer:
         # Initialize agent orchestrator for multi-agent analysis
         self.agent_orchestrator = None
         self._init_agent_orchestrator()
+        
+        # Initialize Cursor chat reader
+        self.cursor_chat_reader = None
+        self._init_cursor_chat_reader()
         
         # Initialize the graph
         self.graph = self._build_graph()
@@ -158,6 +163,27 @@ class GitCommitSummarizer:
         except Exception as e:
             logger.error(f"Failed to initialize agent orchestrator: {e}")
             self.agent_orchestrator = None
+    
+    def _init_cursor_chat_reader(self):
+        """Initialize the Cursor chat reader for development context"""
+        try:
+            # Get configuration from environment
+            chat_enabled = os.getenv('CURSOR_CHAT_ENABLED', 'false').lower() == 'true'
+            chat_path = os.getenv('CURSOR_CHAT_PATH')  # Optional custom path
+            chat_mode = os.getenv('CURSOR_CHAT_MODE', 'light')  # light (default) or full
+            
+            # Initialize reader
+            self.cursor_chat_reader = CursorChatReader(chat_path)
+            
+            if chat_enabled:
+                self.cursor_chat_reader.enable()
+                logger.info(f"Cursor chat reading enabled in {chat_mode} mode")
+            else:
+                logger.info("Cursor chat reading disabled (opt-in feature)")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize Cursor chat reader: {e}")
+            self.cursor_chat_reader = None
         
     def _load_prompt(self, filename: str) -> str:
         """Load a prompt template from the prompts directory"""
@@ -176,14 +202,16 @@ class GitCommitSummarizer:
         # Define nodes
         workflow.add_node("parse_git_diff", self.parse_git_diff)
         workflow.add_node("check_cache_and_budget", self.check_cache_and_budget)
+        workflow.add_node("read_cursor_chats", self.read_cursor_chats)
         workflow.add_node("run_multi_agents", self.run_multi_agents)
         workflow.add_node("summarize_context", self.summarize_context)
         workflow.add_node("summarize_brainlift", self.summarize_brainlift)
         workflow.add_node("write_output", self.write_output)
         
-        # Define edges (linear flow with cache check and multi-agent analysis)
+        # Define edges (linear flow with cache check, chat reading, and multi-agent analysis)
         workflow.add_edge("parse_git_diff", "check_cache_and_budget")
-        workflow.add_edge("check_cache_and_budget", "run_multi_agents")
+        workflow.add_edge("check_cache_and_budget", "read_cursor_chats")
+        workflow.add_edge("read_cursor_chats", "run_multi_agents")
         workflow.add_edge("run_multi_agents", "summarize_context")
         workflow.add_edge("summarize_context", "summarize_brainlift")
         workflow.add_edge("summarize_brainlift", "write_output")
@@ -236,6 +264,79 @@ class GitCommitSummarizer:
             logger.error(f"Error parsing Git diff: {e}")
             raise
         
+        return state
+    
+    def read_cursor_chats(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Read and analyze Cursor chat history related to this commit"""
+        logger.info("Reading Cursor chat history...")
+        
+        # Skip if not enabled or already cached
+        if not self.cursor_chat_reader:
+            logger.warning("Cursor chat reader not initialized")
+            return state
+            
+        if not self.cursor_chat_reader.enabled:
+            logger.info("Cursor chat reading disabled by user")
+            return state
+            
+        if state.get('cache_hit', False):
+            logger.info("Skipping chat reading due to cache hit")
+            return state
+        
+        try:
+            # Get the timestamp of the previous commit to know when to start reading chats
+            repo = git.Repo(self.base_dir)
+            current_commit = repo.commit(state.get("commit_hash"))
+            
+            # Get previous commit timestamp
+            if current_commit.parents:
+                previous_commit = current_commit.parents[0]
+                start_time = datetime.fromtimestamp(previous_commit.committed_date)
+            else:
+                # First commit - read chats from last 24 hours
+                start_time = datetime.now() - timedelta(hours=24)
+            
+            # Read chats after previous commit
+            chat_mode = os.getenv('CURSOR_CHAT_MODE', 'light')
+            
+            if chat_mode == 'light':
+                # Light mode: Only read chats since last commit (no limit)
+                chats = self.cursor_chat_reader.read_chats_after_timestamp(
+                    start_time,
+                    project_path=str(self.base_dir)
+                )
+            else:
+                # Full mode: Read more historical chats for comprehensive analysis
+                # Go back further in time (e.g., last 7 days) with a limit
+                extended_start_time = datetime.now() - timedelta(days=7)
+                chats = self.cursor_chat_reader.read_chats_after_timestamp(
+                    extended_start_time,
+                    project_path=str(self.base_dir),
+                    limit=50
+                )
+            
+            logger.info(f"Found {len(chats)} chats to analyze")
+            
+            if chats:
+                # Generate chat summary
+                chat_summary = self.cursor_chat_reader.get_chat_summary(chats, mode=chat_mode)
+                state["cursor_chat_summary"] = chat_summary
+                
+                # Extract development insights
+                insights = self.cursor_chat_reader.extract_development_insights(chats)
+                state["cursor_chat_insights"] = insights
+                
+                time_desc = "last commit" if chat_mode == 'light' else "last 7 days"
+                logger.info(f"Analyzed {len(chats)} Cursor chats from {time_desc} (mode: {chat_mode})")
+                logger.info(f"Chat summary preview: {chat_summary[:200]}..." if chat_summary else "Empty chat summary")
+            else:
+                logger.info("No recent Cursor chats found")
+                state["cursor_chat_summary"] = ""
+                
+        except Exception as e:
+            logger.error(f"Error reading Cursor chats: {e}")
+            state["cursor_chat_error"] = str(e)
+            
         return state
     
     def run_multi_agents(self, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -293,7 +394,9 @@ class GitCommitSummarizer:
         
         try:
             # Create cache key from commit hash for more stable caching
-            cache_key = f"commit_with_agents:{state.get('commit_hash', 'unknown')}"
+            commit_hash = state.get('commit_hash', 'unknown')
+            cache_key = f"commit_with_agents:{commit_hash}"
+            logger.info(f"Checking cache with key: {cache_key} (commit: {commit_hash})")
             
             # Estimate tokens for budget check
             estimated_tokens = self.budget_manager.estimate_tokens(state.get("git_diff", ""))
@@ -321,6 +424,7 @@ class GitCommitSummarizer:
                 state['context_summary'] = cached_result.get('context_summary', '')
                 state['brainlift_summary'] = cached_result.get('brainlift_summary', '')
                 state['multi_agent_results'] = cached_result.get('multi_agent_results', {})
+                state['cursor_chat_summary'] = cached_result.get('cursor_chat_summary', '')
             else:
                 logger.info("Cache miss - will generate new summaries with agent analysis")
                 state['cache_hit'] = False
@@ -393,6 +497,11 @@ class GitCommitSummarizer:
             # Append agent analysis to the prompt
             if agent_analysis:
                 prompt += agent_analysis
+            
+            # Append Cursor chat summary if available and enabled
+            include_in_summary = os.getenv('CURSOR_CHAT_INCLUDE_IN_SUMMARY', 'true').lower() == 'true'
+            if state.get("cursor_chat_summary") and include_in_summary:
+                prompt += "\n\n" + state["cursor_chat_summary"]
             
             # Log the prompt for debugging
             logger.debug(f"Context prompt: {prompt[:200]}...")
@@ -475,6 +584,13 @@ class GitCommitSummarizer:
             # Append agent insights to make the brainlift more insightful
             if agent_insights:
                 prompt += agent_insights
+                
+            # Append Cursor chat summary if available and enabled
+            include_in_summary = os.getenv('CURSOR_CHAT_INCLUDE_IN_SUMMARY', 'true').lower() == 'true'
+            if state.get("cursor_chat_summary") and include_in_summary:
+                # For brainlift, we might want to add the chat context
+                # but let GPT weave it into the narrative
+                prompt += "\n\n" + state["cursor_chat_summary"]
             
             # Log the prompt for debugging
             logger.debug(f"Brainlift prompt: {prompt[:200]}...")
@@ -616,13 +732,27 @@ class GitCommitSummarizer:
             # Write context.md
             context_path = self.context_dir / f"{timestamp}_context.md"
             with open(context_path, 'w') as f:
-                f.write(state["context_summary"])
+                content = state["context_summary"]
+                
+                # Append Cursor chat summary as a visible section if available
+                if state.get("cursor_chat_summary"):
+                    content += "\n\n---\n"
+                    content += state["cursor_chat_summary"]
+                    
+                f.write(content)
             logger.info(f"Wrote context log: {context_path}")
             
             # Write brainlift.md
             brainlift_path = self.output_dir / f"{timestamp}_brainlift.md"
             with open(brainlift_path, 'w') as f:
-                f.write(state["brainlift_summary"])
+                content = state["brainlift_summary"]
+                
+                # Append Cursor chat summary as a visible section if available
+                if state.get("cursor_chat_summary"):
+                    content += "\n\n---\n"
+                    content += state["cursor_chat_summary"]
+                    
+                f.write(content)
             logger.info(f"Wrote brainlift: {brainlift_path}")
             
             # Write error_log.md if multi-agent analysis was performed
@@ -653,6 +783,7 @@ class GitCommitSummarizer:
                     'context_summary': state.get('context_summary', ''),
                     'brainlift_summary': state.get('brainlift_summary', ''),
                     'multi_agent_results': state.get('multi_agent_results', {}),
+                    'cursor_chat_summary': state.get('cursor_chat_summary', ''),
                     'output_files': state['output_files']
                 }
                 self.cache_manager.exact_cache.set(
@@ -660,7 +791,7 @@ class GitCommitSummarizer:
                     cache_data,
                     ttl=86400  # 24 hours
                 )
-                logger.info(f"Cached results with multi-agent analysis")
+                logger.info(f"Cached results with key: {state['cache_key']}")
             
             # Log final stats
             if self.cache_manager:

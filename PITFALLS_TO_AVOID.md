@@ -315,6 +315,93 @@ if not API_KEY:
     raise ValueError("Please set OPENAI_API_KEY in .env")
 ```
 
+## 🤖 Multi-Agent System Pitfalls (NEW)
+
+### 22. **Python Import Errors from Electron**
+❌ **DON'T**: Assume Python can find modules when spawned from different directories
+✅ **DO**: Set PYTHONPATH and fix sys.path in the script
+
+```javascript
+// In Electron main.js
+const pythonProcess = spawn(pythonCommand, args, {
+    cwd: currentProject.path,
+    env: { 
+        ...process.env,
+        PYTHONPATH: path.join(__dirname, '..'),  // Critical!
+        // ... other env vars
+    }
+});
+```
+
+```python
+# In Python script
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Then use relative imports
+from cache import CacheManager  # Not: from agents.cache import
+```
+
+### 23. **Cache Workflow Order**
+❌ **DON'T**: Generate summaries in the cache check step
+✅ **DO**: Only check cache early, generate after multi-agent analysis
+
+```python
+# BAD: Agent results never make it to output
+def check_cache_and_budget(state):
+    if not cached:
+        # Generates summaries HERE before agents run!
+        state['summaries'] = generate_summaries()
+    return state
+
+# GOOD: Proper workflow order
+def check_cache_and_budget(state):
+    # Only CHECK cache, don't generate
+    cached = cache.get(cache_key)
+    if cached:
+        state['cache_hit'] = True
+        state.update(cached)
+    return state
+
+# Summaries generated AFTER agents in separate nodes
+```
+
+### 24. **Agent Results Not in Output**
+❌ **DON'T**: Generate prompts without agent results
+✅ **DO**: Append agent analysis to prompts
+
+```python
+# In summarize_context node
+if state.get("multi_agent_results"):
+    agent_analysis = format_agent_results(state["multi_agent_results"])
+    prompt += agent_analysis  # Append to prompt!
+
+# Generate separate error log for detailed issues
+if state.get("multi_agent_results"):
+    error_log_content = generate_error_log(state)
+    write_file("error_logs/", error_log_content)
+```
+
+### 25. **Rigid Document Display**
+❌ **DON'T**: Hard-code which document shows in which panel
+✅ **DO**: Add dropdowns for flexible viewing
+
+```javascript
+// Add document type selectors
+<select id="leftPanelType">
+    <option value="context">Context Log</option>
+    <option value="brainlift">Brainlift</option>
+    <option value="error_log">Error Log</option>
+</select>
+
+// Add history browser
+<select id="leftPanelHistory">
+    <option value="latest">Latest</option>
+    <!-- Populated dynamically with timestamps -->
+</select>
+```
+
 ## 📝 Summary of Best Practices
 
 1. **Start Simple**: MVP first, features later
@@ -326,5 +413,8 @@ if not API_KEY:
 7. **Think Async**: Don't block the UI
 8. **Test at Scale**: 1000 commits, not just 10
 9. **Developer First**: Always provide bypass options for testing
+10. **Path Handling**: Always handle Python imports when spawning from Electron
+11. **Workflow Order**: Cache → Agents → Summaries → Output (not Cache → Summaries)
+12. **UI Flexibility**: Let users choose what to view where
 
 Remember: **It's easier to add features than remove them!** 
