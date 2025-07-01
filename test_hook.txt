@@ -1,0 +1,8 @@
+This is a test file to verify that the Auto-Brainlift Git hook works correctly.
+
+When we commit this file, it should automatically trigger:
+1. The post-commit hook
+2. The git_hook_handler.py script
+3. The LangGraph agent to generate summaries
+
+Created at: 2025-06-30 
