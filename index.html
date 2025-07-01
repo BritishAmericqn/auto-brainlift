@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Auto-Brainlift - Automatic development summaries">
     <title>Auto-Brainlift</title>
+    <link rel="icon" type="image/png" href="public/autobrainliftlogo.png">
     
     <style>
         /* Import premium font */
@@ -166,13 +167,21 @@
             letter-spacing: -0.02em;
             display: flex;
             align-items: center;
-            gap: var(--spacing-sm);
+            gap: var(--spacing-md);
         }
         
-        h1::before {
-            content: '🧠';
-            font-size: 32px;
-            filter: hue-rotate(180deg) brightness(0.8);
+        .logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(10, 11, 13, 0.5))
+                    drop-shadow(0 0 10px rgba(45, 74, 124, 0.3));
+            transition: filter var(--transition-base);
+        }
+        
+        .logo:hover {
+            filter: drop-shadow(0 2px 4px rgba(10, 11, 13, 0.5))
+                    drop-shadow(0 0 15px rgba(92, 211, 255, 0.4));
         }
         
         .subtitle {
@@ -1011,7 +1020,10 @@
 <body>
     <div class="container">
         <header>
-            <h1>Auto-Brainlift</h1>
+            <h1>
+                <img src="public/autobrainliftlogo.png" alt="Auto-Brainlift Logo" class="logo">
+                Auto-Brainlift
+            </h1>
             <p class="subtitle">Automatic development summaries powered by AI</p>
         </header>
         

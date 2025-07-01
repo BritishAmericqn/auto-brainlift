@@ -36,7 +36,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, '../public/icon.png'), // We'll create this later
+    icon: path.join(__dirname, '../public/autobrainliftlogo.png'),
     titleBarStyle: 'default',
     backgroundColor: '#ffffff'
   });
@@ -57,6 +57,14 @@ function createWindow() {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
+  // Set dock icon for macOS in development
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    const iconPath = path.join(__dirname, '../public/autobrainliftlogo.png');
+    if (fs.existsSync(iconPath)) {
+      app.dock.setIcon(iconPath);
+    }
+  }
+  
   // Initialize project manager first
   await initializeProjectManager();
   
