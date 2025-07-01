@@ -30,3 +30,9 @@ __pycache__/
 .env
 *.egg-info/
 .pytest_cache/
+
+# Auto-Brainlift
+.processed_commits
+.retry_queue.json
+brainlifts/
+context_logs/

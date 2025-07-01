@@ -17,7 +17,7 @@ Auto-Brainlift Expanded Build Checklist (Line-by-Line for Cursor)
 1️⃣ PROJECT INITIALIZATION
 ==========================================================
 
-- [ ] Create the following folders at root level:
+- [x] Create the following folders at root level:
       - /agents/
       - /brainlifts/
       - /context_logs/
