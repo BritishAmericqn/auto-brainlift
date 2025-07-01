@@ -1,13 +1,380 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Auto-Brainlift - Automatic development summaries">
+    <title>Auto-Brainlift</title>
+    
+    <style>
+        /* Design tokens */
+        :root {
+            /* Colors */
+            --color-primary: #0066cc;
+            --color-primary-hover: #0052a3;
+            --color-success: #22c55e;
+            --color-error: #ef4444;
+            --color-background: #ffffff;
+            --color-surface: #f8fafc;
+            --color-border: #e2e8f0;
+            --color-text: #1e293b;
+            --color-text-secondary: #64748b;
+            
+            /* Spacing */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            
+            /* Typography */
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-size-sm: 14px;
+            --font-size-base: 16px;
+            --font-size-lg: 20px;
+            --font-size-xl: 24px;
+            
+            /* Transitions */
+            --transition-base: 200ms ease-in-out;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        }
+        
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Base styles */
+        body {
+            font-family: var(--font-family);
+            font-size: var(--font-size-base);
+            color: var(--color-text);
+            background-color: var(--color-background);
+            line-height: 1.6;
+        }
+        
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+        
+        header {
+            border-bottom: 1px solid var(--color-border);
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-lg);
+        }
+        
+        h1 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--color-text);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .subtitle {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-base);
+        }
+        
+        /* Controls section */
+        .controls {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .controls h2 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        /* Button styles */
+        .button {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: var(--spacing-sm) var(--spacing-lg);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .button:hover {
+            background-color: var(--color-primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-base);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* Status message */
+        .status {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: 6px;
+            font-size: var(--font-size-sm);
+            transition: all var(--transition-base);
+            opacity: 0;
+        }
+        
+        .status.show {
+            opacity: 1;
+        }
+        
+        .status.success {
+            background-color: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status.error {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        
+        /* Output section */
+        .output-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+        }
+        
+        .output-panel {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: var(--spacing-lg);
+            min-height: 400px;
+        }
+        
+        .output-panel h3 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .timestamp {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            font-weight: normal;
+        }
+        
+        .output-content {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: var(--font-size-sm);
+            line-height: 1.5;
+            color: var(--color-text);
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        
+        /* Loading skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+            height: 20px;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            color: var(--color-text-secondary);
+            padding: var(--spacing-xl);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .output-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 Auto-Brainlift</h1>
+            <p class="subtitle">Automatic development summaries powered by AI</p>
+        </header>
+        
+        <section class="controls">
+            <h2>Manual Generation</h2>
+            <button id="generateBtn" class="button">
+                <span>Generate Summary</span>
+            </button>
+            <div id="status" class="status"></div>
+        </section>
+        
+        <section class="output-section">
+            <div class="output-panel">
+                <h3>
+                    Context Log
+                    <span class="timestamp" id="contextTimestamp"></span>
+                </h3>
+                <div id="contextOutput" class="output-content">
+                    <div class="empty-state">No context log generated yet</div>
+                </div>
+            </div>
+            
+            <div class="output-panel">
+                <h3>
+                    Brainlift
+                    <span class="timestamp" id="brainliftTimestamp"></span>
+                </h3>
+                <div id="brainliftOutput" class="output-content">
+                    <div class="empty-state">No brainlift generated yet</div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <script>
+        // UI Elements
+        const generateBtn = document.getElementById('generateBtn');
+        const statusEl = document.getElementById('status');
+        const contextOutput = document.getElementById('contextOutput');
+        const brainliftOutput = document.getElementById('brainliftOutput');
+        const contextTimestamp = document.getElementById('contextTimestamp');
+        const brainliftTimestamp = document.getElementById('brainliftTimestamp');
+        
+        // Show status message
+        function showStatus(message, type = 'success') {
+            statusEl.textContent = message;
+            statusEl.className = `status show ${type}`;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 5000);
+        }
+        
+        // Show loading skeleton
+        function showSkeleton(element) {
+            element.innerHTML = `
+                <div class="skeleton" style="width: 80%;"></div>
+                <div class="skeleton" style="width: 60%;"></div>
+                <div class="skeleton" style="width: 90%;"></div>
+                <div class="skeleton" style="width: 70%;"></div>
+            `;
+        }
+        
+        // Format timestamp
+        function formatTimestamp(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            return date.toLocaleString();
+        }
+        
+        // Load latest files on startup
+        async function loadLatestFiles() {
+            try {
+                const result = await window.electronAPI.getLatestFiles();
+                
+                if (result.context) {
+                    contextOutput.textContent = result.context.content;
+                    contextTimestamp.textContent = formatTimestamp(result.context.timestamp);
+                }
+                
+                if (result.brainlift) {
+                    brainliftOutput.textContent = result.brainlift.content;
+                    brainliftTimestamp.textContent = formatTimestamp(result.brainlift.timestamp);
+                }
+            } catch (error) {
+                console.error('Error loading latest files:', error);
+            }
+        }
+        
+        // Generate summary
+        async function generateSummary() {
+            try {
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generating...';
+                
+                // Show loading skeletons
+                showSkeleton(contextOutput);
+                showSkeleton(brainliftOutput);
+                
+                const result = await window.electronAPI.generateSummary();
+                
+                if (result.success) {
+                    showStatus('Summary generation started successfully!', 'success');
+                    
+                    // Poll for new files after a delay
+                    setTimeout(() => {
+                        loadLatestFiles();
+                    }, 3000);
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                    loadLatestFiles(); // Restore previous content
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                loadLatestFiles(); // Restore previous content
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Summary';
+            }
+        }
+        
+        // Event listeners
+        generateBtn.addEventListener('click', generateSummary);
+        
+        // Listen for progress updates from the main process
+        window.electronAPI.onSummaryProgress((data) => {
+            if (data.status === 'complete') {
+                loadLatestFiles();
+                showStatus('Summary generation completed!', 'success');
+            } else if (data.status === 'error') {
+                showStatus(`Error: ${data.message}`, 'error');
+            }
+        });
+        
+        // Load initial data
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLatestFiles();
+        });
+        
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+                e.preventDefault();
+                generateSummary();
+            }
+        });
+    </script>
+</body>
 </html>

@@ -1,0 +1,15 @@
+# Auto-Brainlift Python Dependencies
+# Last updated: 2025-06-30
+
+# Core dependencies
+langchain==0.3.16
+langchain-openai==0.3.27
+langchain-core==0.3.67
+langgraph==0.3.24
+gitpython==3.1.43
+openai==1.93.0
+python-dotenv==1.0.1
+
+# Additional utilities
+pydantic==2.7.4
+typing-extensions==4.12.2 

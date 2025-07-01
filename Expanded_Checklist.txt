@@ -1,0 +1,174 @@
+Auto-Brainlift Expanded Build Checklist (Line-by-Line for Cursor)
+
+==========================================================
+⚠️ GENERAL PITFALLS – READ BEFORE BEGINNING ANY FEATURE
+==========================================================
+
+1. Always generate two files: `brainlift.md` and `context.md`
+2. Do not overengineer LangGraph: linear node flow only
+3. Distinguish tone: context.md = structured, brainlift.md = narrative
+4. Use Electron UI only for simple buttons and text display
+5. n8n should only trigger LangGraph, not contain logic
+6. Output files go in `/brainlifts/` and `/context_logs/`
+7. Never summarize during broken app states — trigger ONLY on commit
+8. Log all prompt/output for debugging
+
+==========================================================
+1️⃣ PROJECT INITIALIZATION
+==========================================================
+
+- [ ] Create the following folders at root level:
+      - /agents/
+      - /brainlifts/
+      - /context_logs/
+      - /logs/
+      - /prompts/
+      - /ui/
+      - /workflows/
+
+- [ ] Initialize npm and install Electron:
+      npm init -y
+      npm install electron --save-dev
+
+- [ ] Set up `.env.template` with:
+      OPENAI_API_KEY=
+      OUTPUT_DIR=./brainlifts
+
+- [ ] Create basic Electron shell:
+      - main.ts / preload.js / index.html
+      - Render "Generate Summary" button
+      - Show last written file contents in UI
+
+✅ Pitfall Guard:
+> Keep the UI simple – no routing, no component trees. Just one page and a few elements.
+
+==========================================================
+1.5️⃣ PYTHON ENVIRONMENT SETUP
+==========================================================
+
+- [ ] Create Python virtual environment:
+      python3 -m venv venv
+      source venv/bin/activate  # On macOS/Linux
+
+- [ ] Install Python dependencies:
+      pip install langchain langgraph gitpython openai python-dotenv
+
+- [ ] Create requirements.txt:
+      langchain
+      langgraph
+      gitpython
+      openai
+      python-dotenv
+
+- [ ] Configure OpenAI in .env:
+      - Use GPT-4 or GPT-4-turbo for accuracy over speed
+      - Set reasonable timeout and retry settings
+
+✅ Pitfall Guard:
+> Always use a virtual environment to avoid dependency conflicts. Document Python version (3.8+).
+
+==========================================================
+2️⃣ LANGGRAPH SUMMARIZATION AGENT
+==========================================================
+
+- [ ] Create `langgraph_agent.py` in /agents/
+- [ ] Create these LangGraph nodes:
+      - parse_git_diff
+      - summarize_context
+      - summarize_brainlift
+      - write_output
+
+- [ ] Chain nodes in a linear graph:
+      parse_git_diff → summarize_context → summarize_brainlift → write_output
+
+- [ ] Create a dummy git diff file and pass to the agent
+
+- [ ] Store two prompt templates in `/prompts/`:
+      - brainlift.txt
+      - context.txt
+
+✅ Pitfall Guard:
+> Don't use nested graphs or unnecessary branching. Each input must result in two markdown files.
+
+==========================================================
+3️⃣ GIT COMMIT INTEGRATION
+==========================================================
+
+- [ ] Use GitPython (or `simple-git`) to read last commit diff
+- [ ] Save commit hash after summary to avoid repeats
+- [ ] Extract diff and format for LangGraph input
+- [ ] Test: after each commit, LangGraph is triggered with correct diff
+
+- [ ] Create a `post-commit` Git hook that:
+      - Reads last commit diff
+      - Triggers langgraph_agent.py
+
+✅ Pitfall Guard:
+> Only trigger summarization on commits – not on saves or idle. This avoids summarizing half-baked code.
+
+==========================================================
+4️⃣ AI PROMPTS AND OUTPUT WRITING
+==========================================================
+
+- [ ] Read prompts from `/prompts/*.txt`
+- [ ] Use OpenAI/Claude to generate:
+      - context.md (structured format)
+      - brainlift.md (reflective format)
+
+- [ ] Write files with filenames:
+      - /brainlifts/YYYY-MM-DD_HH-MM-SS_brainlift.md
+      - /context_logs/YYYY-MM-DD_HH-MM-SS_context.md
+
+✅ Pitfall Guard:
+> Always generate both files. Never write to root or overwrite without checking.
+
+==========================================================
+5️⃣ ELECTRON ↔ LANGGRAPH TRIGGER
+==========================================================
+
+- [ ] Use Node `child_process.spawn` to run langgraph_agent.py
+- [ ] Hook up Electron UI "Generate" button to manual summary trigger
+- [ ] Display output contents in a preview pane
+
+✅ Pitfall Guard:
+> Don't try to do AI in the renderer. Just call your Python agent.
+
+==========================================================
+6️⃣ OPTIONAL: N8N TRIGGER (FUTURE ENHANCEMENT)
+==========================================================
+
+- [ ] Set up local n8n instance
+- [ ] Create webhook or folder trigger
+- [ ] Point it to run langgraph_agent.py via command
+
+✅ Pitfall Guard:
+> n8n does not contain logic – it only detects commit or file event and passes control.
+
+==========================================================
+7️⃣ LOGGING & ERROR HANDLING
+==========================================================
+
+- [ ] Write AI prompts and responses to `/logs/debug.log`
+- [ ] If generation fails, show message in UI
+- [ ] Optionally include commit hash in file metadata
+- [ ] Implement retry queue for failed API calls:
+      - Alert user on failure
+      - Queue failed attempts
+      - Retry with exponential backoff
+      - Maximum 3 retry attempts
+
+✅ Pitfall Guard:
+> Always log. Debugging LangGraph without logs is painful.
+
+==========================================================
+8️⃣ FINAL POLISH AND SUBMISSION
+==========================================================
+
+- [ ] Test: make a commit → two files generated → view in UI
+- [ ] Add README.md with:
+      - Setup
+      - Manual trigger
+      - Git hook setup
+      - Dependencies
+- [ ] Record demo video
+- [ ] Submit GitHub repo, app package, Brainlift log, and social media post

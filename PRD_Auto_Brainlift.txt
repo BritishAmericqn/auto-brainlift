@@ -1,0 +1,98 @@
+Product Requirements Document (PRD)
+===================================
+Project Name: Auto-Brainlift
+
+Overview
+--------
+Auto-Brainlift is a desktop application for macOS that automatically generates two types of markdown documents at meaningful development milestones—specifically, after every Git commit.
+
+It is built for developers using AI coding tools like Cursor who want to:
+1. Maintain high-quality context memory for AI assistants.
+2. Reflect and document their own development process over time.
+
+The app uses LangGraph for structured, multi-step summarization and n8n (or post-commit Git hooks) for automation. A minimal Electron-based UI supports manual triggering and file preview.
+
+Key Objectives
+--------------
+- Solve a personal productivity issue by eliminating manual journaling.
+- Build an AI-first app that respects local workflows and development flow.
+- Anchor summaries to Git commits only, avoiding broken states.
+- Deliver dual outputs: one for AI memory, one for human reflection.
+
+Core Features
+-------------
+1. **Git-Commit Trigger**
+   - Automatic summarization is triggered *only after Git commits*.
+   - Ensures summaries reflect stable, completed work—not transient dev states.
+
+2. **LangGraph Summarizer**
+   - Multi-step workflow:
+     - parse_git_diff
+     - summarize_context (for AI input)
+     - summarize_brainlift (for personal review)
+     - write_output
+
+3. **Dual Output Generation**
+   - `context.md`: concise, structured changelog-style summary
+   - `brainlift.md`: journal-style reflection of developer process
+   - Files are saved to:
+     - `/context_logs/YYYY-MM-DD_context.md`
+     - `/brainlifts/YYYY-MM-DD_brainlift.md`
+
+4. **Electron UI (Minimal)**
+   - Manual "Generate Summary" button
+   - Output preview window
+   - Status updates ("Success", "Error", etc.)
+
+5. **n8n or Git Hook Automation**
+   - Local Git `post-commit` hook triggers LangGraph
+   - Optional: n8n automation for future extensibility
+
+6. **Prompt Template System**
+   - Prompts stored in local `/prompts/` directory
+   - Allows customization and experimentation
+
+7. **Logging**
+   - All prompts and responses are logged to `/logs/debug.log`
+   - Errors, failures, and metadata are captured
+
+8. **Manual Trigger Option**
+   - Developer can generate summaries anytime via the UI
+
+Technical Architecture
+----------------------
+- Electron (Frontend UI)
+- LangGraph (Python) – Multi-node summarization workflow
+- Git CLI or GitPython – Commit monitoring and diff extraction
+- Node.js – Shell execution and frontend/backend bridge
+- OpenAI/Claude – Text summarization API
+- Markdown – Output format (local-first)
+- n8n – (Optional) automation layer
+
+System Flow
+-----------
+1. Git commit made → commit hook or n8n detects change
+2. Diff is extracted from latest commit
+3. LangGraph agent processes diff through three summarizer nodes
+4. Two markdown files written to disk
+5. Optional: Electron UI displays output
+
+Folder Structure
+----------------
+- /agents/              → LangGraph agent logic
+- /brainlifts/          → Personal reflection outputs
+- /context_logs/        → AI memory outputs
+- /logs/                → Prompt/output/error logs
+- /prompts/             → Prompt templates for summarization
+- /workflows/           → Optional n8n flow files
+- /ui/                  → Electron UI files
+- main.ts, preload.js   → Electron entrypoints
+- .env.template         → API keys and settings
+
+Success Criteria
+----------------
+- Every Git commit → exactly two markdown files
+- Electron UI allows manual generation and basic output preview
+- No crashes or unintended triggers (e.g., on save)
+- Summaries are contextually accurate and reflect commit contents
+- Logs are sufficient to debug workflow and AI output
