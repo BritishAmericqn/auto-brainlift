@@ -492,6 +492,83 @@
         .token-meter-fill.danger {
             background-color: var(--color-error);
         }
+        
+        /* Stats section styles */
+        .stats-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .stats-panel {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: var(--spacing-lg);
+        }
+        
+        .stats-panel h3 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-md);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-label {
+            display: block;
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .stat-value {
+            display: block;
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        .cost-preview {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background-color: var(--color-background);
+            border-radius: 6px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .preview-label {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .preview-value {
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            color: var(--color-text);
+        }
+        
+        @media (max-width: 768px) {
+            .stats-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
     </style>
 </head>
 <body>
@@ -533,6 +610,52 @@
                 <span>Generate Summary</span>
             </button>
             <div id="status" class="status"></div>
+        </section>
+        
+        <!-- Cache & Budget Stats -->
+        <section class="stats-section">
+            <div class="stats-panel">
+                <h3>📊 Cache Performance</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Hit Rate</span>
+                        <span class="stat-value" id="cacheHitRate">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Requests</span>
+                        <span class="stat-value" id="cacheTotalRequests">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Avg Latency</span>
+                        <span class="stat-value" id="cacheAvgLatency">--</span>
+                    </div>
+                </div>
+                <button id="clearCacheBtn" class="button-secondary" style="margin-top: 16px;">
+                    <span>🗑️ Clear Cache</span>
+                </button>
+            </div>
+            
+            <div class="stats-panel">
+                <h3>💰 Token Usage</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Today</span>
+                        <span class="stat-value" id="tokensToday">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Cost Today</span>
+                        <span class="stat-value" id="costToday">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Cost</span>
+                        <span class="stat-value" id="totalCost">--</span>
+                    </div>
+                </div>
+                <div class="cost-preview" id="costPreview" style="display: none;">
+                    <div class="preview-label">Next commit estimate:</div>
+                    <div class="preview-value" id="costEstimate">--</div>
+                </div>
+            </div>
         </section>
         
         <section class="output-section">
@@ -673,6 +796,17 @@
         let globalSettings = {};
         let pendingProjectPath = null; // Store path while waiting for name
         
+        // Cache & Budget elements
+        const cacheHitRate = document.getElementById('cacheHitRate');
+        const cacheTotalRequests = document.getElementById('cacheTotalRequests');
+        const cacheAvgLatency = document.getElementById('cacheAvgLatency');
+        const clearCacheBtn = document.getElementById('clearCacheBtn');
+        const tokensToday = document.getElementById('tokensToday');
+        const costToday = document.getElementById('costToday');
+        const totalCost = document.getElementById('totalCost');
+        const costPreview = document.getElementById('costPreview');
+        const costEstimate = document.getElementById('costEstimate');
+        
         // Show status message
         function showStatus(message, type = 'success') {
             statusEl.textContent = message;
@@ -760,6 +894,11 @@
                     setTimeout(() => {
                         loadLatestFiles();
                     }, 3000);
+                    
+                    // Also load immediately in case of cache hit
+                    setTimeout(() => {
+                        loadLatestFiles();
+                    }, 500);
                 } else {
                     showStatus(`Error: ${result.error}`, 'error');
                     loadLatestFiles(); // Restore previous content
@@ -997,6 +1136,112 @@
             }
         }
         
+        // Cache & Budget Functions
+        async function loadCacheStats() {
+            console.log('[DEBUG] Loading cache stats...');
+            try {
+                const result = await window.electronAPI.cache.getStats();
+                console.log('[DEBUG] Cache stats result:', result);
+                
+                if (result.success) {
+                    const stats = result.stats;
+                    console.log('[DEBUG] Cache stats data:', stats);
+                    
+                    // Update cache stats
+                    updateCacheStats(stats);
+                } else {
+                    console.error('[DEBUG] Failed to load cache stats:', result.error);
+                    // Show defaults if no stats
+                    updateCacheStats(null);
+                }
+            } catch (error) {
+                console.error('[DEBUG] Error loading cache stats:', error);
+            }
+        }
+        
+        async function loadBudgetUsage() {
+            console.log('[DEBUG] Loading budget usage...');
+            try {
+                const result = await window.electronAPI.budget.getUsage();
+                console.log('[DEBUG] Budget usage result:', result);
+                
+                if (result.success) {
+                    const usage = result.usage;
+                    console.log('[DEBUG] Budget usage data:', usage);
+                    
+                    // Update today's usage
+                    tokensToday.textContent = usage.today.tokens.toLocaleString();
+                    costToday.textContent = `$${usage.today.cost.toFixed(5)}`;
+                    totalCost.textContent = `$${usage.total.cost.toFixed(5)}`;
+                } else {
+                    console.error('[DEBUG] Failed to load budget usage:', result.error);
+                }
+            } catch (error) {
+                console.error('[DEBUG] Error loading budget usage:', error);
+            }
+        }
+        
+        async function clearCache() {
+            if (!confirm('Are you sure you want to clear the cache? This will remove all cached summaries.')) {
+                return;
+            }
+            
+            try {
+                const clearResult = await window.electronAPI.cache.clear();
+                if (clearResult.success) {
+                    showStatus('Cache cleared successfully', 'success');
+                    // Refresh cache stats after clearing
+                    await refreshCacheStats();
+                } else {
+                    showStatus(`Failed to clear cache: ${clearResult.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function previewCost(diffText) {
+            if (!diffText || !currentProject?.settings?.budgetEnabled) {
+                costPreview.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const result = await window.electronAPI.cost.preview(diffText);
+                if (result.success && result.preview) {
+                    const preview = result.preview;
+                    costEstimate.textContent = `~${preview.estimated_tokens.toLocaleString()} tokens ($${preview.estimated_cost.toFixed(4)})`;
+                    
+                    if (!preview.within_budget) {
+                        costEstimate.style.color = 'var(--color-error)';
+                        costEstimate.textContent += ' ⚠️ Exceeds budget';
+                    } else {
+                        costEstimate.style.color = 'var(--color-text)';
+                    }
+                    
+                    costPreview.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error previewing cost:', error);
+                costPreview.style.display = 'none';
+            }
+        }
+        
+        // Helper function to refresh cache stats
+        async function refreshCacheStats() {
+            try {
+                const cacheResult = await window.electronAPI.cache.getStats();
+                if (cacheResult.success) {
+                    updateCacheStats(cacheResult.stats);
+                } else {
+                    updateCacheStats(null);
+                }
+            } catch (error) {
+                console.error('Error refreshing cache stats:', error);
+                updateCacheStats(null);
+            }
+        }
+        
         // Event listeners
         generateBtn.addEventListener('click', generateSummary);
         
@@ -1010,6 +1255,9 @@
         changeProjectBtn.addEventListener('click', changeProjectDirectory);
         settingsBtn.addEventListener('click', showSettingsModal);
         settingsForm.addEventListener('submit', saveSettings);
+        
+        // Cache & Budget event listeners
+        clearCacheBtn.addEventListener('click', clearCache);
         
         // Modal close on background click
         settingsModal.addEventListener('click', (e) => {
@@ -1031,16 +1279,17 @@
         // Listen for progress updates from the main process
         window.electronAPI.onSummaryProgress((data) => {
             if (data.status === 'complete') {
-                loadLatestFiles();
                 showStatus('Summary generation completed!', 'success');
+                hideSpinner();
+                // Refresh latest files after generation
+                loadLatestFiles();
+                // Also refresh cache stats as they may have changed
+                refreshCacheStats();
             } else if (data.status === 'error') {
-                if (data.retry) {
-                    showStatus(`Error: ${data.message}. Will retry automatically.`, 'warning');
-                } else {
-                    showStatus(`Error: ${data.message}`, 'error');
-                }
-            } else if (data.status === 'retry') {
-                showStatus(`Retrying summary generation (attempt ${data.attempt})...`, 'warning');
+                showStatus(`Error: ${data.message}`, 'error');
+                hideSpinner();
+            } else {
+                showStatus(data.message, 'info');
             }
         });
         
@@ -1049,6 +1298,17 @@
             loadLatestFiles();
             loadProjects();
             loadCurrentProject();
+            
+            // Load cache and budget stats
+            loadCacheStats();
+            loadBudgetUsage();
+            
+            // Refresh data periodically
+            setInterval(() => {
+                loadLatestFiles();
+                refreshCacheStats();
+                loadBudgetUsage();
+            }, 30000);  // Every 30 seconds
             
             // Listen for project changes
             window.electronAPI.project.onListChanged(() => {
@@ -1059,6 +1319,9 @@
                 currentProject = project;
                 updateProjectUI();
                 loadLatestFiles();
+                // Reload stats for new project
+                loadCacheStats();
+                loadBudgetUsage();
             });
             
             window.electronAPI.project.onSettingsChanged((project) => {
@@ -1081,6 +1344,25 @@
                 generateSummary();
             }
         });
+        
+        // Update cache stats display
+        function updateCacheStats(stats) {
+            if (stats && stats.overall) {
+                // Convert decimal to percentage and format
+                const hitRate = (stats.overall.hit_rate * 100).toFixed(1);
+                const totalRequests = stats.overall.total_requests || 0;
+                const avgLatency = Math.round(stats.overall.avg_latency_ms || 0);
+                
+                cacheHitRate.textContent = `${hitRate}%`;
+                cacheTotalRequests.textContent = totalRequests;
+                cacheAvgLatency.textContent = `${avgLatency}ms`;
+            } else {
+                // No stats available yet
+                cacheHitRate.textContent = '0.0%';
+                cacheTotalRequests.textContent = '0';
+                cacheAvgLatency.textContent = '0ms';
+            }
+        }
     </script>
 </body>
 </html>

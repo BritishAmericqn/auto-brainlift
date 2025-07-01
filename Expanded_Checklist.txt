@@ -209,34 +209,34 @@ Auto-Brainlift Expanded Build Checklist (Line-by-Line for Cursor)
 9️⃣ SMART CACHING & COST OPTIMIZATION
 ==========================================================
 
-- [ ] Implement 3-tier caching system:
+- [x] Implement 3-tier caching system:
       - Level 1: Exact match cache (50ms response)
       - Level 2: Semantic cache (2s response)
       - Level 3: Full LLM processing (6s response)
 
-- [ ] Set up exact match cache:
+- [x] Set up exact match cache:
       - In-memory hashmap for speed
       - MD5 hash of queries as keys
       - TTL of 3600 seconds (1 hour)
 
-- [ ] Create semantic cache with embeddings:
+- [x] Create semantic cache with embeddings:
       - Use text-embedding-ada-002 ($0.0001/1K tokens)
       - Store embeddings in vector database
       - Similarity threshold of 0.85
       - TTL of 86400 seconds (24 hours)
 
-- [ ] Build smart query router:
+- [x] Build smart query router:
       - Check exact cache first
       - Fall back to semantic cache
       - Use GPT-3.5 for simple tasks
       - Reserve GPT-4 for complex analysis
 
-- [ ] Implement diff chunking:
+- [x] Implement diff chunking:
       - 1000 character chunks
       - 100 character overlap
       - Preserve semantic boundaries (functions, classes)
 
-- [ ] Add token budget manager:
+- [x] Add token budget manager:
       - User-configurable per-commit limits (1k-50k tokens)
       - Enable/disable toggle for testing
       - Estimated cost preview before processing
@@ -245,6 +245,9 @@ Auto-Brainlift Expanded Build Checklist (Line-by-Line for Cursor)
 
 ✅ Pitfall Guard:
 > Always check cheaper options first. Cache embeddings permanently as they're cheap to store.
+> FIXED: Path mismatch between Python (~/.config) and Electron (~/Library/Application Support)
+> FIXED: Import statements to use proper module paths
+> FIXED: Cache stats now show real data, not mock values
 
 ==========================================================
 🔟 CONFIGURABLE MULTI-AGENT SYSTEM

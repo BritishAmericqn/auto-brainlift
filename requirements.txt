@@ -12,4 +12,7 @@ python-dotenv==1.0.1
 
 # Additional utilities
 pydantic==2.7.4
-typing-extensions==4.12.2 
+typing-extensions==4.12.2
+
+# Cache dependencies
+numpy==1.26.4  # For semantic cache similarity calculations 

@@ -113,9 +113,13 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
         cwd: currentProject.path, // Run from project directory
         env: { 
           ...process.env,
-          // Pass project path as environment variable instead
+          // Pass project context
           PROJECT_PATH: currentProject.path,
-          PROJECT_NAME: currentProject.name
+          PROJECT_NAME: currentProject.name,
+          PROJECT_ID: currentProject.id,
+          // Pass budget settings
+          BUDGET_ENABLED: currentProject.settings.budgetEnabled ? 'true' : 'false',
+          COMMIT_TOKEN_LIMIT: String(currentProject.settings.commitTokenLimit || 10000)
         }
       });
       
@@ -433,4 +437,244 @@ function logToFile(message) {
   if (process.env.NODE_ENV === 'development') {
     console.log(logMessage.trim());
   }
-} 
+}
+
+// Cache management IPC handlers
+ipcMain.handle('cache:get-stats', async () => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return {
+        success: false,
+        error: 'No project selected'
+      };
+    }
+    
+    logToFile(`Getting cache stats for project: ${currentProject.id} (${currentProject.name})`);
+    
+    // Read real stats from the cache stats file
+    const statsFile = path.join(
+      app.getPath('userData'),
+      'projects',
+      currentProject.id,
+      'cache',
+      'stats.json'
+    );
+    
+    logToFile(`Looking for stats file at: ${statsFile}`);
+    
+    if (fs.existsSync(statsFile)) {
+      try {
+        const statsData = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+        logToFile(`Found cache stats: ${JSON.stringify(statsData.overall)}`);
+        return {
+          success: true,
+          stats: statsData
+        };
+      } catch (error) {
+        logToFile(`Error reading cache stats file: ${error.message}`);
+        // Return default stats if file is corrupted
+        return {
+          success: true,
+          stats: {
+            overall: {
+              hit_rate: 0,
+              total_requests: 0,
+              avg_latency_ms: 0
+            }
+          }
+        };
+      }
+    }
+    
+    logToFile('Stats file does not exist yet');
+    // Return empty stats if file doesn't exist yet
+    return {
+      success: true,
+      stats: {
+        overall: {
+          hit_rate: 0,
+          total_requests: 0,
+          avg_latency_ms: 0
+        },
+        exact_cache: {
+          hits: 0,
+          misses: 0,
+          sets: 0,
+          evictions: 0,
+          hit_rate: 0
+        },
+        semantic_cache: {
+          hits: 0,
+          misses: 0,
+          sets: 0,
+          evictions: 0,
+          hit_rate: 0,
+          entry_count: 0,
+          total_bytes: 0
+        },
+        embeddings: {
+          generations: 0,
+          estimated_cost: 0
+        }
+      }
+    };
+  } catch (error) {
+    logToFile(`Error getting cache stats: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('cache:clear', async (event, cacheType = 'all') => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return {
+        success: false,
+        error: 'No project selected'
+      };
+    }
+    
+    // Clear cache files for the project
+    const cacheDir = path.join(
+      app.getPath('userData'),
+      'projects',
+      currentProject.id,
+      'cache'
+    );
+    
+    if (fs.existsSync(cacheDir)) {
+      if (cacheType === 'all' || cacheType === 'exact') {
+        const exactCachePath = path.join(cacheDir, 'exact_cache.json');
+        if (fs.existsSync(exactCachePath)) {
+          fs.unlinkSync(exactCachePath);
+        }
+      }
+      
+      if (cacheType === 'all' || cacheType === 'semantic') {
+        const semanticCachePath = path.join(cacheDir, 'semantic_cache.db');
+        if (fs.existsSync(semanticCachePath)) {
+          fs.unlinkSync(semanticCachePath);
+        }
+      }
+    }
+    
+    // Also clear the stats file when clearing cache
+    const statsFile = path.join(cacheDir, 'stats.json');
+    if (fs.existsSync(statsFile)) {
+      fs.unlinkSync(statsFile);
+    }
+    
+    logToFile(`Cleared ${cacheType} cache for project ${currentProject.name}`);
+    
+    return {
+      success: true,
+      message: `${cacheType} cache cleared successfully`
+    };
+  } catch (error) {
+    logToFile(`Error clearing cache: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// Budget management IPC handlers
+ipcMain.handle('budget:get-usage', async () => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return {
+        success: false,
+        error: 'No project selected'
+      };
+    }
+    
+    // Read usage data from project budget file
+    const usageFile = path.join(
+      app.getPath('userData'),
+      'projects',
+      currentProject.id,
+      'budget',
+      'usage.json'
+    );
+    
+    if (fs.existsSync(usageFile)) {
+      const usageData = JSON.parse(fs.readFileSync(usageFile, 'utf8'));
+      
+      // Calculate summaries
+      const today = new Date().toISOString().split('T')[0];
+      const todayUsage = usageData.daily_usage[today] || { tokens: 0, cost: 0 };
+      
+      return {
+        success: true,
+        usage: {
+          today: todayUsage,
+          total: {
+            tokens: usageData.total_tokens,
+            cost: usageData.total_cost
+          },
+          recent_commits: Object.entries(usageData.commits).slice(-5)
+        }
+      };
+    }
+    
+    // Return empty usage if file doesn't exist
+    return {
+      success: true,
+      usage: {
+        today: { tokens: 0, cost: 0 },
+        total: { tokens: 0, cost: 0 },
+        recent_commits: []
+      }
+    };
+  } catch (error) {
+    logToFile(`Error getting budget usage: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('cost:preview', async (event, diffText) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return {
+        success: false,
+        error: 'No project selected'
+      };
+    }
+    
+    // Simple token estimation (4 chars per token for text, 3 for code)
+    const looksLikeCode = diffText.includes('function') || 
+                         diffText.includes('class') || 
+                         diffText.includes('{') ||
+                         diffText.includes('=>');
+    
+    const estimatedTokens = Math.ceil(diffText.length / (looksLikeCode ? 3 : 4));
+    const costPerToken = 0.01 / 1000; // GPT-4-turbo pricing
+    const estimatedCost = estimatedTokens * costPerToken;
+    
+    return {
+      success: true,
+      preview: {
+        estimated_tokens: estimatedTokens,
+        estimated_cost: estimatedCost,
+        within_budget: estimatedTokens <= (currentProject.settings.commitTokenLimit || 10000),
+        budget_enabled: currentProject.settings.budgetEnabled || false
+      }
+    };
+  } catch (error) {
+    logToFile(`Error previewing cost: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}); 

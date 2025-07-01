@@ -66,5 +66,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Dialog API
   dialog: {
     selectDirectory: () => ipcRenderer.invoke('dialog:select-directory')
+  },
+  
+  // Cache API
+  cache: {
+    getStats: () => ipcRenderer.invoke('cache:get-stats'),
+    clear: (cacheType) => ipcRenderer.invoke('cache:clear', cacheType)
+  },
+  
+  // Budget API
+  budget: {
+    getUsage: () => ipcRenderer.invoke('budget:get-usage')
+  },
+  
+  // Cost API
+  cost: {
+    preview: (diffText) => ipcRenderer.invoke('cost:preview', diffText)
   }
 }); 

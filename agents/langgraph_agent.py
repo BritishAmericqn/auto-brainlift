@@ -8,7 +8,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,6 +16,10 @@ from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 import git
+
+# Import cache and budget managers
+from agents.cache import CacheManager
+from agents.budget_manager import BudgetManager
 
 # Load environment variables
 load_dotenv()
@@ -39,8 +43,9 @@ class GitCommitSummarizer:
     
     def __init__(self):
         # Initialize OpenAI
+        self.model = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
         self.llm = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-4-turbo"),
+            model=self.model,
             temperature=0.7
         )
         
@@ -51,6 +56,9 @@ class GitCommitSummarizer:
             self.base_dir = Path(project_path)
         else:
             self.base_dir = Path.cwd()
+        
+        # Get project name from environment
+        self.project_name = os.getenv("PROJECT_NAME", self.base_dir.name)
         
         # Output directories should be relative to project
         self.output_dir = self.base_dir / "brainlifts"
@@ -68,8 +76,41 @@ class GitCommitSummarizer:
         self.context_prompt = self._load_prompt("context.txt")
         self.brainlift_prompt = self._load_prompt("brainlift.txt")
         
+        # Initialize cache and budget managers
+        self._init_cache_and_budget()
+        
         # Initialize the graph
         self.graph = self._build_graph()
+    
+    def _init_cache_and_budget(self):
+        """Initialize cache and budget managers"""
+        try:
+            # Get project ID from environment or generate from path
+            project_id = os.getenv("PROJECT_ID")
+            if not project_id:
+                # Use a hash of the project path as ID
+                import hashlib
+                project_id = hashlib.md5(str(self.base_dir).encode()).hexdigest()[:12]
+            
+            # Initialize cache manager
+            self.cache_manager = CacheManager(project_id)
+            logger.info(f"Initialized cache manager for project {project_id}")
+            
+            # Get project settings from environment
+            settings = {
+                'budgetEnabled': os.getenv('BUDGET_ENABLED', 'false').lower() == 'true',
+                'commitTokenLimit': int(os.getenv('COMMIT_TOKEN_LIMIT', '10000'))
+            }
+            
+            # Initialize budget manager
+            self.budget_manager = BudgetManager(project_id, settings)
+            logger.info(f"Initialized budget manager with settings: {settings}")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize cache/budget managers: {e}")
+            # Create dummy managers that don't cache/track
+            self.cache_manager = None
+            self.budget_manager = None
         
     def _load_prompt(self, filename: str) -> str:
         """Load a prompt template from the prompts directory"""
@@ -87,12 +128,14 @@ class GitCommitSummarizer:
         
         # Define nodes
         workflow.add_node("parse_git_diff", self.parse_git_diff)
+        workflow.add_node("check_cache_and_budget", self.check_cache_and_budget)
         workflow.add_node("summarize_context", self.summarize_context)
         workflow.add_node("summarize_brainlift", self.summarize_brainlift)
         workflow.add_node("write_output", self.write_output)
         
-        # Define edges (linear flow)
-        workflow.add_edge("parse_git_diff", "summarize_context")
+        # Define edges (linear flow with cache check)
+        workflow.add_edge("parse_git_diff", "check_cache_and_budget")
+        workflow.add_edge("check_cache_and_budget", "summarize_context")
         workflow.add_edge("summarize_context", "summarize_brainlift")
         workflow.add_edge("summarize_brainlift", "write_output")
         workflow.add_edge("write_output", END)
@@ -129,7 +172,8 @@ class GitCommitSummarizer:
             
             # Extract commit info
             commit_info = {
-                "commit_hash": f"Commit: {commit.hexsha[:8]}",
+                "commit_hash": commit.hexsha,  # Store full hash
+                "commit_hash_display": f"Commit: {commit.hexsha[:8]}",
                 "commit_message": f"Message: {commit.message.strip()}",
                 "commit_author": f"Author: {commit.author.name} <{commit.author.email}>",
                 "commit_date": f"Date: {datetime.fromtimestamp(commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')}",
@@ -145,13 +189,128 @@ class GitCommitSummarizer:
         
         return state
     
+    def check_cache_and_budget(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Check cache for existing results and validate budget"""
+        logger.info("Checking cache and budget...")
+        
+        # Skip if managers not initialized
+        if not self.cache_manager or not self.budget_manager:
+            logger.warning("Cache/budget managers not available, skipping checks")
+            return state
+        
+        try:
+            # Create cache key from diff
+            cache_key = state["git_diff"]
+            
+            # Estimate tokens for budget check first
+            estimated_tokens = self.budget_manager.estimate_tokens(cache_key)
+            
+            # Check budget
+            within_budget, budget_details = self.budget_manager.check_budget(
+                estimated_tokens, 
+                self.model
+            )
+            
+            state['budget_check'] = budget_details
+            
+            if not within_budget and budget_details['budget_enabled']:
+                logger.warning(f"Budget exceeded: {budget_details}")
+                # In a real implementation, you might want to handle this differently
+                # For now, we'll continue with a warning
+            
+            # Define function to generate summaries if not cached
+            def generate_summaries(query):
+                logger.info("Generating new summaries...")
+                
+                # Generate context summary
+                context_prompt = self.context_prompt.format(
+                    commit_hash=state.get("commit_hash_display", ""),
+                    commit_message=state.get("commit_message", ""),
+                    commit_author=state.get("commit_author", ""),
+                    commit_date=state.get("commit_date", ""),
+                    git_diff=state.get("git_diff", "")
+                )
+                
+                context_response = self.llm.invoke([HumanMessage(content=context_prompt)])
+                context_summary = context_response.content
+                
+                # Generate brainlift summary
+                brainlift_prompt = self.brainlift_prompt.format(
+                    commit_hash=state.get("commit_hash_display", ""),
+                    commit_message=state.get("commit_message", ""),
+                    commit_author=state.get("commit_author", ""),
+                    commit_date=state.get("commit_date", ""),
+                    git_diff=state.get("git_diff", "")
+                )
+                
+                brainlift_response = self.llm.invoke([HumanMessage(content=brainlift_prompt)])
+                brainlift_summary = brainlift_response.content
+                
+                # Track token usage
+                if self.budget_manager:
+                    # Estimate tokens used (rough estimate)
+                    tokens_used = (len(context_summary) + len(brainlift_summary)) // 4
+                    self.budget_manager.record_usage(
+                        tokens_used,
+                        self.model,
+                        state.get("commit_hash", None)
+                    )
+                    logger.info(f"Recorded {tokens_used} tokens used")
+                
+                return {
+                    'context_summary': context_summary,
+                    'brainlift_summary': brainlift_summary
+                }
+            
+            # Check cache or generate
+            cached_result = self.cache_manager.get_or_generate(
+                cache_key, 
+                generate_summaries,
+                cache_ttl=3600  # 1 hour for exact matches
+            )
+            
+            # Extract results
+            if cached_result['metadata']['cache_hit'] != 'miss':
+                logger.info(f"Cache hit: {cached_result['metadata']['cache_hit']}")
+                state['cache_hit'] = True
+            else:
+                logger.info("Cache miss - generated new summaries")
+                state['cache_hit'] = False
+                
+            # Store summaries in state
+            if cached_result['data']:
+                state['context_summary'] = cached_result['data'].get('context_summary', '')
+                state['brainlift_summary'] = cached_result['data'].get('brainlift_summary', '')
+                
+            # Log cache stats
+            stats = self.cache_manager.get_cache_stats()
+            logger.info(f"Cache stats: {stats['overall']}")
+                
+        except Exception as e:
+            logger.error(f"Error in cache/budget check: {e}")
+            # Continue without cache/budget features
+            state['cache_hit'] = False
+            
+        return state
+    
     def summarize_context(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Generate context.md summary"""
+        # Check if we already have a cached result in state
+        if state.get('context_summary'):
+            logger.info("Using cached context summary")
+            return state
+            
         logger.info("Generating context summary...")
         
         try:
             # Format the prompt
-            prompt = self.context_prompt.format(**state)
+            prompt = self.context_prompt.format(
+                commit_hash=state.get("commit_hash_display", ""),
+                commit_message=state.get("commit_message", ""),
+                commit_author=state.get("commit_author", ""),
+                commit_date=state.get("commit_date", ""),
+                git_diff=state.get("git_diff", "")
+            )
             
             # Log the prompt for debugging
             logger.debug(f"Context prompt: {prompt[:200]}...")
@@ -171,11 +330,22 @@ class GitCommitSummarizer:
     
     def summarize_brainlift(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Generate brainlift.md summary"""
+        # Check if we already have a cached result in state
+        if state.get('brainlift_summary'):
+            logger.info("Using cached brainlift summary")
+            return state
+            
         logger.info("Generating brainlift summary...")
         
         try:
             # Format the prompt
-            prompt = self.brainlift_prompt.format(**state)
+            prompt = self.brainlift_prompt.format(
+                commit_hash=state.get("commit_hash_display", ""),
+                commit_message=state.get("commit_message", ""),
+                commit_author=state.get("commit_author", ""),
+                commit_date=state.get("commit_date", ""),
+                git_diff=state.get("git_diff", "")
+            )
             
             # Log the prompt for debugging
             logger.debug(f"Brainlift prompt: {prompt[:200]}...")
@@ -218,20 +388,70 @@ class GitCommitSummarizer:
                 "brainlift": str(brainlift_path)
             }
             
+            # Log final stats
+            if self.cache_manager:
+                stats = self.cache_manager.get_cache_stats()
+                logger.info(f"Final cache stats: Hit rate: {stats['overall']['hit_rate']:.2%}, Total requests: {stats['overall']['total_requests']}")
+            
+            if self.budget_manager:
+                usage_summary = self.budget_manager.get_usage_summary()
+                logger.info(f"Token usage - Today: {usage_summary['today']['tokens']} tokens (${usage_summary['today']['cost']:.4f})")
+            
         except Exception as e:
             logger.error(f"Error writing output files: {e}")
             raise
         
         return state
     
-    def process_commit(self, commit_hash: str = None) -> Dict[str, Any]:
+    def process_commit(self, commit_hash: Optional[str] = None) -> Dict[str, Any]:
         """Process a Git commit and generate summaries"""
         initial_state = {}
         if commit_hash:
             initial_state["commit_hash"] = commit_hash
         
         try:
+            # Quick cache check before running full workflow
+            if self.cache_manager:
+                # Get commit info for cache key
+                repo = git.Repo(self.base_dir)
+                commit = repo.commit(commit_hash) if commit_hash else repo.head.commit
+                
+                # Create a more stable cache key using commit hash instead of diff
+                cache_key = f"commit:{commit.hexsha}"
+                
+                # Check if we have this commit cached
+                cached = self.cache_manager.exact_cache.get(cache_key)
+                
+                if cached is not None:
+                    logger.info(f"Quick cache hit for commit {commit.hexsha[:8]}")
+                    # Return early with cached data
+                    return {
+                        'cache_hit': True,
+                        'output_files': cached.get('output_files', {}),
+                        'context_summary': cached.get('context_summary', ''),
+                        'brainlift_summary': cached.get('brainlift_summary', ''),
+                        'budget_check': {
+                            'estimated_tokens': 0,
+                            'estimated_cost': 0.0
+                        }
+                    }
+            
+            # Run full workflow if not cached
             result = self.graph.invoke(initial_state)
+            
+            # Cache the result using commit hash as key
+            if self.cache_manager and result.get('output_files'):
+                cache_data = {
+                    'output_files': result['output_files'],
+                    'context_summary': result.get('context_summary', ''),
+                    'brainlift_summary': result.get('brainlift_summary', '')
+                }
+                self.cache_manager.exact_cache.set(
+                    cache_key,
+                    cache_data,
+                    ttl=86400  # 24 hours for commit-based cache
+                )
+            
             logger.info("Successfully processed commit")
             return result
         except Exception as e:
@@ -253,6 +473,13 @@ def main():
         print("\n✅ Summary generation complete!")
         print(f"Context log: {result['output_files']['context']}")
         print(f"Brainlift: {result['output_files']['brainlift']}")
+        
+        if result.get('cache_hit'):
+            print("📦 Result was served from cache!")
+        
+        if result.get('budget_check'):
+            print(f"💰 Token estimate: {result['budget_check']['estimated_tokens']}")
+            print(f"💵 Cost estimate: ${result['budget_check']['estimated_cost']:.4f}")
         
     except Exception as e:
         print(f"\n❌ Error: {e}")

@@ -4,6 +4,15 @@ Automatically generate AI-powered development summaries after every Git commit. 
 - **context.md**: Technical, structured summaries for AI coding assistants
 - **brainlift.md**: Personal, reflective journal entries about your coding journey
 
+## 🎉 Phase 2 Complete: Smart Caching System
+
+Auto-Brainlift now includes intelligent caching to reduce API costs by up to 10x! Features include:
+- 🚀 Multi-tier caching (exact match → semantic → full LLM)
+- 💰 Budget management with per-commit token limits
+- 📊 Real-time cache performance and cost analytics
+
+See [PHASE2_CACHING_GUIDE.md](PHASE2_CACHING_GUIDE.md) for full details.
+
 ## Features
 
 - 🔄 **Automatic Generation**: Summaries created automatically after each Git commit
@@ -12,6 +21,10 @@ Automatically generate AI-powered development summaries after every Git commit. 
 - 🔁 **Retry Logic**: Automatic retry with exponential backoff for failed generations
 - 🏃 **Background Processing**: Git commits complete immediately, summaries generate async
 - 🎨 **Clean UI**: Skeleton loaders, micro-interactions, and modern design
+- 🚀 **Smart Caching**: Multi-tier caching reduces API costs by up to 10x
+- 💰 **Budget Management**: Per-commit token limits with usage tracking
+- 📊 **Analytics Dashboard**: Real-time cache performance and cost metrics
+- 🔐 **Project Isolation**: Complete data separation between projects
 
 ## Quick Start
 
@@ -40,6 +53,8 @@ Automatically generate AI-powered development summaries after every Git commit. 
    python3 -m venv venv
    source venv/bin/activate  # On macOS/Linux
    pip install -r requirements.txt
+   # Or use the update script:
+   ./update_dependencies.sh
    ```
 
 4. **Configure OpenAI API**
@@ -93,14 +108,20 @@ python test_agent.py
 ```
 auto-brainlift/
 ├── agents/              # Python LangGraph logic
+│   ├── cache/          # Caching system (NEW)
+│   │   ├── cache_manager.py
+│   │   ├── exact_cache.py
+│   │   └── semantic_cache.py
 │   ├── langgraph_agent.py    # Main summarization agent
 │   ├── git_hook_handler.py   # Git hook integration
-│   └── retry_manager.py      # Retry queue management
+│   ├── retry_manager.py      # Retry queue management
+│   └── budget_manager.py     # Token budget tracking (NEW)
 ├── brainlifts/         # Personal reflection outputs
 ├── context_logs/       # AI context outputs
 ├── electron/           # Electron main process
+│   └── projectManager.js     # Multi-project support (NEW)
 ├── logs/              # Application logs
-├── mcp-integration/    # Cursor IDE integration (NEW)
+├── mcp-integration/    # Cursor IDE integration
 │   ├── mcp-server.js  # MCP server for Cursor
 │   └── README.md      # MCP setup instructions
 ├── prompts/           # AI prompt templates
@@ -110,8 +131,10 @@ auto-brainlift/
 ├── .env               # Environment configuration
 ├── index.html         # Main UI (vanilla HTML/JS)
 ├── package.json       # Node dependencies
-├── EXPANSION_PLAN.md  # Roadmap for new features (NEW)
-└── PITFALLS_TO_AVOID.md # Common mistakes guide (NEW)
+├── EXPANSION_PLAN.md  # Roadmap for new features
+├── PITFALLS_TO_AVOID.md # Common mistakes guide
+├── PHASE2_CACHING_GUIDE.md # Caching system docs (NEW)
+└── test_cache.py      # Cache testing script (NEW)
 ```
 
 ## Configuration
@@ -131,6 +154,10 @@ CONTEXT_DIR=./context_logs
 # Features
 GIT_HOOK_ENABLED=true
 SKIP_EXISTING_COMMITS=true
+
+# Budget Management (NEW)
+BUDGET_ENABLED=false
+COMMIT_TOKEN_LIMIT=10000
 ```
 
 ### Customizing Prompts
