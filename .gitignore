@@ -36,3 +36,20 @@ __pycache__/
 .retry_queue.json
 brainlifts/
 context_logs/
+error_logs/
+
+# Build artifacts
+build/
+dist/
+*.dmg
+*.zip
+*.exe
+*.AppImage
+*.deb
+*.rpm
+*.blockmap
+
+# Temporary files
+python_wrapper.py
+run_agent.sh
+run_agent.bat

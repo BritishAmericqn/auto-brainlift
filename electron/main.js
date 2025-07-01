@@ -98,11 +98,36 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
     
     return new Promise((resolve, reject) => {
       // Spawn Python process
-      const pythonPath = path.join(__dirname, '../venv/bin/python');
-      const scriptPath = path.join(__dirname, '../agents/langgraph_agent.py');
+      let pythonCommand;
+      let scriptPath;
       
-      // Check if virtual environment exists, fallback to python3 if not
-      const pythonCommand = fs.existsSync(pythonPath) ? pythonPath : 'python3';
+      if (app.isPackaged) {
+        // In production, use the Python wrapper
+        pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+        scriptPath = path.join(process.resourcesPath, 'python_wrapper.py');
+        
+        // Check if Python is available
+        try {
+          require('child_process').execSync(`${pythonCommand} --version`, { stdio: 'ignore' });
+        } catch (error) {
+          mainWindow.webContents.send('summary-progress', {
+            status: 'error',
+            message: 'Python not found. Please install Python 3.8 or later.'
+          });
+          resolve({
+            success: false,
+            error: 'Python not found. Please install Python 3.8 or later.'
+          });
+          return;
+        }
+      } else {
+        // In development, use venv
+        const pythonPath = path.join(__dirname, '../venv/bin/python');
+        scriptPath = path.join(__dirname, '../agents/langgraph_agent.py');
+        
+        // Check if virtual environment exists, fallback to python3 if not
+        pythonCommand = fs.existsSync(pythonPath) ? pythonPath : 'python3';
+      }
       
       const args = [scriptPath];
       // Pass commit hash as a simple argument if provided

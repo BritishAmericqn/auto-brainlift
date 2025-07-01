@@ -7,7 +7,11 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "test": "echo \"Tests will be added\" && exit 0"
+    "test": "echo \"Tests will be added\" && exit 0",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
   },
   "keywords": [
     "electron",
@@ -18,10 +22,48 @@
   "author": "Auto-Brainlift Team",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^30.0.1"
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "electron-settings": "^4.0.4",
     "uuid": "^11.1.0"
+  },
+  "build": {
+    "appId": "com.autobrainlift.app",
+    "productName": "Auto-Brainlift",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "index.html",
+      "public/**/*",
+      "agents/**/*",
+      "prompts/**/*",
+      "package.json",
+      "!**/__pycache__",
+      "!venv",
+      "!*.pyc",
+      "!.git",
+      "!.gitignore",
+      "!node_modules/.cache"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
