@@ -198,6 +198,92 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
   }
 });
 
+ipcMain.handle('get-file-history', async (event, fileType) => {
+  try {
+    // Get current project
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return {
+        success: false,
+        error: 'No project selected'
+      };
+    }
+    
+    let dirPath;
+    if (fileType === 'brainlift') {
+      const paths = projectManager.getProjectOutputPaths(currentProject.id);
+      dirPath = paths.brainlifts;
+    } else if (fileType === 'context') {
+      const paths = projectManager.getProjectOutputPaths(currentProject.id);
+      dirPath = paths.contextLogs;
+    } else if (fileType === 'error_log') {
+      dirPath = path.join(currentProject.path, 'error_logs');
+    } else {
+      return {
+        success: false,
+        error: 'Invalid file type'
+      };
+    }
+    
+    if (!fs.existsSync(dirPath)) {
+      return {
+        success: true,
+        files: []
+      };
+    }
+    
+    const files = fs.readdirSync(dirPath)
+      .filter(file => file.endsWith('.md'))
+      .map(file => {
+        const stat = fs.statSync(path.join(dirPath, file));
+        return {
+          name: file,
+          timestamp: stat.mtime.toISOString(),
+          path: path.join(dirPath, file)
+        };
+      })
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 20); // Limit to last 20 files
+    
+    return {
+      success: true,
+      files: files
+    };
+  } catch (error) {
+    logToFile(`Error getting file history: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('get-file-content', async (event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return {
+        success: false,
+        error: 'File not found'
+      };
+    }
+    
+    const content = fs.readFileSync(filePath, 'utf8');
+    const stat = fs.statSync(filePath);
+    
+    return {
+      success: true,
+      content: content,
+      timestamp: stat.mtime.toISOString()
+    };
+  } catch (error) {
+    logToFile(`Error reading file: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
 ipcMain.handle('get-latest-files', async () => {
   try {
     // Get current project
@@ -216,6 +302,7 @@ ipcMain.handle('get-latest-files', async () => {
       return {
         brainlift: null,
         context: null,
+        errorLog: null,
         error: 'Invalid project paths'
       };
     }
@@ -224,9 +311,14 @@ ipcMain.handle('get-latest-files', async () => {
     const latestBrainlift = await getLatestFile(paths.brainlifts);
     const latestContext = await getLatestFile(paths.contextLogs);
     
+    // Get error logs from project directory (not the centralized location)
+    const errorLogPath = path.join(currentProject.path, 'error_logs');
+    const latestErrorLog = await getLatestFile(errorLogPath);
+    
     return {
       brainlift: latestBrainlift,
       context: latestContext,
+      errorLog: latestErrorLog,
       projectName: currentProject.name
     };
   } catch (error) {

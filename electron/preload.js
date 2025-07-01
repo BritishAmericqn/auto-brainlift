@@ -82,5 +82,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Cost API
   cost: {
     preview: (diffText) => ipcRenderer.invoke('cost:preview', diffText)
+  },
+  
+  // File API
+  file: {
+    getHistory: (fileType) => ipcRenderer.invoke('get-file-history', fileType),
+    getContent: (filePath) => ipcRenderer.invoke('get-file-content', filePath)
   }
 }); 

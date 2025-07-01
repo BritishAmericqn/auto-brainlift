@@ -184,6 +184,41 @@
             justify-content: space-between;
         }
         
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .output-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .document-selector, .history-selector {
+            padding: 6px 12px;
+            font-size: 13px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .document-selector:hover, .history-selector:hover {
+            border-color: var(--color-primary);
+            background-color: var(--color-card);
+        }
+        
+        .document-selector:focus, .history-selector:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
         .timestamp {
             font-size: var(--font-size-sm);
             color: var(--color-text-secondary);
@@ -660,22 +695,46 @@
         
         <section class="output-section">
             <div class="output-panel">
-                <h3>
-                    Context Log
-                    <span class="timestamp" id="contextTimestamp"></span>
-                </h3>
-                <div id="contextOutput" class="output-content">
-                    <div class="empty-state">No context log generated yet</div>
+                <div class="output-header">
+                    <h3>
+                        <span id="leftPanelTitle">Context Log</span>
+                        <span class="timestamp" id="leftPanelTimestamp"></span>
+                    </h3>
+                    <div class="output-controls">
+                        <select id="leftPanelType" class="document-selector">
+                            <option value="context">Context Log</option>
+                            <option value="brainlift">Brainlift</option>
+                            <option value="error_log">Error Log</option>
+                        </select>
+                        <select id="leftPanelHistory" class="history-selector" style="display: none;">
+                            <option value="latest">Latest</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="leftPanelOutput" class="output-content">
+                    <div class="empty-state">No content available</div>
                 </div>
             </div>
             
             <div class="output-panel">
-                <h3>
-                    Brainlift
-                    <span class="timestamp" id="brainliftTimestamp"></span>
-                </h3>
-                <div id="brainliftOutput" class="output-content">
-                    <div class="empty-state">No brainlift generated yet</div>
+                <div class="output-header">
+                    <h3>
+                        <span id="rightPanelTitle">Brainlift</span>
+                        <span class="timestamp" id="rightPanelTimestamp"></span>
+                    </h3>
+                    <div class="output-controls">
+                        <select id="rightPanelType" class="document-selector">
+                            <option value="brainlift">Brainlift</option>
+                            <option value="context">Context Log</option>
+                            <option value="error_log">Error Log</option>
+                        </select>
+                        <select id="rightPanelHistory" class="history-selector" style="display: none;">
+                            <option value="latest">Latest</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="rightPanelOutput" class="output-content">
+                    <div class="empty-state">No content available</div>
                 </div>
             </div>
         </section>
@@ -827,10 +886,20 @@
         // UI Elements
         const generateBtn = document.getElementById('generateBtn');
         const statusEl = document.getElementById('status');
-        const contextOutput = document.getElementById('contextOutput');
-        const brainliftOutput = document.getElementById('brainliftOutput');
-        const contextTimestamp = document.getElementById('contextTimestamp');
-        const brainliftTimestamp = document.getElementById('brainliftTimestamp');
+        
+        // Panel elements - updated for flexible document display
+        const leftPanelOutput = document.getElementById('leftPanelOutput');
+        const rightPanelOutput = document.getElementById('rightPanelOutput');
+        const leftPanelTimestamp = document.getElementById('leftPanelTimestamp');
+        const rightPanelTimestamp = document.getElementById('rightPanelTimestamp');
+        const leftPanelTitle = document.getElementById('leftPanelTitle');
+        const rightPanelTitle = document.getElementById('rightPanelTitle');
+        
+        // Document type selectors
+        const leftPanelType = document.getElementById('leftPanelType');
+        const rightPanelType = document.getElementById('rightPanelType');
+        const leftPanelHistory = document.getElementById('leftPanelHistory');
+        const rightPanelHistory = document.getElementById('rightPanelHistory');
         
         // Project management elements
         const projectDropdown = document.getElementById('projectDropdown');
@@ -899,43 +968,128 @@
             return date.toLocaleString();
         }
         
+        // Store current file data
+        let fileData = {
+            context: null,
+            brainlift: null,
+            error_log: null
+        };
+        
         // Load latest files on startup
         async function loadLatestFiles() {
             try {
                 const result = await window.electronAPI.getLatestFiles();
-                
-                // Clear existing content first
-                contextOutput.innerHTML = '<div class="empty-state">No context log generated yet</div>';
-                brainliftOutput.innerHTML = '<div class="empty-state">No brainlift generated yet</div>';
-                contextTimestamp.textContent = '';
-                brainliftTimestamp.textContent = '';
                 
                 if (result.error) {
                     console.log('Error loading files:', result.error);
                     return;
                 }
                 
-                if (result.context) {
-                    contextOutput.textContent = result.context.content;
-                    contextTimestamp.textContent = formatTimestamp(result.context.timestamp);
-                }
+                // Store file data
+                fileData.context = result.context;
+                fileData.brainlift = result.brainlift;
+                fileData.error_log = result.errorLog;
                 
-                if (result.brainlift) {
-                    brainliftOutput.textContent = result.brainlift.content;
-                    brainliftTimestamp.textContent = formatTimestamp(result.brainlift.timestamp);
-                }
+                // Update panels based on their current selection
+                updatePanel('left');
+                updatePanel('right');
                 
-                // Update project name in header if available
-                if (result.projectName && currentProject) {
-                    // Project name is already shown in dropdown
-                }
+                // Update history dropdowns
+                updateHistoryDropdowns();
             } catch (error) {
                 console.error('Error loading latest files:', error);
-                // Clear content on error
-                contextOutput.innerHTML = '<div class="empty-state">No context log generated yet</div>';
-                brainliftOutput.innerHTML = '<div class="empty-state">No brainlift generated yet</div>';
-                contextTimestamp.textContent = '';
-                brainliftTimestamp.textContent = '';
+            }
+        }
+        
+        // Update a specific panel based on its current selection
+        function updatePanel(panel) {
+            const panelType = panel === 'left' ? leftPanelType.value : rightPanelType.value;
+            const panelOutput = panel === 'left' ? leftPanelOutput : rightPanelOutput;
+            const panelTimestamp = panel === 'left' ? leftPanelTimestamp : rightPanelTimestamp;
+            const panelTitle = panel === 'left' ? leftPanelTitle : rightPanelTitle;
+            const historyDropdown = panel === 'left' ? leftPanelHistory : rightPanelHistory;
+            
+            // Get the selected file from history or use latest
+            const selectedFile = historyDropdown.value;
+            let data = null;
+            
+            if (selectedFile === 'latest') {
+                data = fileData[panelType];
+            } else {
+                // Will be handled by loadFileFromHistory
+                return;
+            }
+            
+            // Update title
+            const titles = {
+                context: 'Context Log',
+                brainlift: 'Brainlift',
+                error_log: 'Error Log'
+            };
+            panelTitle.textContent = titles[panelType] || 'Unknown';
+            
+            // Update content
+            if (data) {
+                panelOutput.textContent = data.content;
+                panelTimestamp.textContent = formatTimestamp(data.timestamp);
+            } else {
+                panelOutput.innerHTML = `<div class="empty-state">No ${titles[panelType].toLowerCase()} available</div>`;
+                panelTimestamp.textContent = '';
+            }
+        }
+        
+        // Load file history for dropdowns
+        async function updateHistoryDropdowns() {
+            // Update left panel history
+            const leftType = leftPanelType.value;
+            await updateHistoryDropdown(leftPanelHistory, leftType);
+            
+            // Update right panel history
+            const rightType = rightPanelType.value;
+            await updateHistoryDropdown(rightPanelHistory, rightType);
+        }
+        
+        // Update a specific history dropdown
+        async function updateHistoryDropdown(dropdown, fileType) {
+            try {
+                const result = await window.electronAPI.file.getHistory(fileType);
+                if (result.success) {
+                    dropdown.innerHTML = '<option value="latest">Latest</option>';
+                    
+                    result.files.forEach((file, index) => {
+                        const option = document.createElement('option');
+                        option.value = file.path;
+                        const date = new Date(file.timestamp);
+                        const timeStr = date.toLocaleString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                        option.textContent = `${timeStr}${index === 0 ? ' (Latest)' : ''}`;
+                        dropdown.appendChild(option);
+                    });
+                    
+                    dropdown.style.display = result.files.length > 1 ? 'block' : 'none';
+                }
+            } catch (error) {
+                console.error('Error updating history dropdown:', error);
+            }
+        }
+        
+        // Load a specific file from history
+        async function loadFileFromHistory(panel, filePath) {
+            try {
+                const result = await window.electronAPI.file.getContent(filePath);
+                if (result.success) {
+                    const panelOutput = panel === 'left' ? leftPanelOutput : rightPanelOutput;
+                    const panelTimestamp = panel === 'left' ? leftPanelTimestamp : rightPanelTimestamp;
+                    
+                    panelOutput.textContent = result.content;
+                    panelTimestamp.textContent = formatTimestamp(result.timestamp);
+                }
+            } catch (error) {
+                console.error('Error loading file from history:', error);
             }
         }
         
@@ -946,8 +1100,8 @@
                 generateBtn.textContent = 'Generating...';
                 
                 // Show loading skeletons
-                showSkeleton(contextOutput);
-                showSkeleton(brainliftOutput);
+                showSkeleton(leftPanelOutput);
+                showSkeleton(rightPanelOutput);
                 
                 const result = await window.electronAPI.generateSummary();
                 
@@ -1380,6 +1534,36 @@
         
         // Event listeners
         generateBtn.addEventListener('click', generateSummary);
+        
+        // Document type selector events
+        leftPanelType.addEventListener('change', async (e) => {
+            leftPanelHistory.value = 'latest';
+            await updateHistoryDropdown(leftPanelHistory, e.target.value);
+            updatePanel('left');
+        });
+        
+        rightPanelType.addEventListener('change', async (e) => {
+            rightPanelHistory.value = 'latest';
+            await updateHistoryDropdown(rightPanelHistory, e.target.value);
+            updatePanel('right');
+        });
+        
+        // History dropdown events
+        leftPanelHistory.addEventListener('change', (e) => {
+            if (e.target.value === 'latest') {
+                updatePanel('left');
+            } else {
+                loadFileFromHistory('left', e.target.value);
+            }
+        });
+        
+        rightPanelHistory.addEventListener('change', (e) => {
+            if (e.target.value === 'latest') {
+                updatePanel('right');
+            } else {
+                loadFileFromHistory('right', e.target.value);
+            }
+        });
         
         // Project management event listeners
         projectDropdown.addEventListener('change', (e) => {

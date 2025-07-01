@@ -502,6 +502,109 @@ class GitCommitSummarizer:
         
         return state
     
+    def _generate_error_log(self, state: Dict[str, Any]) -> str:
+        """Generate a detailed error log from multi-agent analysis results"""
+        results = state.get("multi_agent_results", {})
+        if not results.get("agents"):
+            return ""
+        
+        # Start with header
+        content = f"""# Multi-Agent Analysis Error Log
+
+**Commit:** {state.get("commit_hash_display", "Unknown")}
+**Date:** {state.get("commit_date", "Unknown")}
+**Message:** {state.get("commit_message", "Unknown")}
+
+---
+
+"""
+        
+        # Security Issues
+        security_data = results["agents"].get("security", {}).get("analysis", {})
+        if security_data.get("vulnerabilities"):
+            content += "## 🔒 Security Issues\n\n"
+            content += f"**Overall Security Score:** {security_data.get('security_score', 'N/A')}/100\n"
+            content += f"**Severity Level:** {security_data.get('severity', 'unknown').upper()}\n\n"
+            
+            for i, vuln in enumerate(security_data["vulnerabilities"], 1):
+                content += f"### Issue #{i}: {vuln.get('type', 'Unknown Type')}\n"
+                content += f"**File:** `{vuln.get('file', 'Unknown')}`\n"
+                content += f"**Line:** {vuln.get('line', 'Unknown')}\n"
+                content += f"**Severity:** {vuln.get('severity', 'unknown').upper()}\n\n"
+                content += f"**Description:**\n{vuln.get('description', 'No description available')}\n\n"
+                
+                if vuln.get('recommendation'):
+                    content += f"**Recommendation:**\n{vuln['recommendation']}\n\n"
+                
+                if vuln.get('code_snippet'):
+                    content += f"**Code:**\n```\n{vuln['code_snippet']}\n```\n\n"
+                
+                content += "---\n\n"
+        
+        # Code Quality Issues
+        quality_data = results["agents"].get("quality", {}).get("analysis", {})
+        if quality_data.get("issues"):
+            content += "## 🎯 Code Quality Issues\n\n"
+            content += f"**Overall Quality Score:** {quality_data.get('quality_score', 'N/A')}/100\n"
+            content += f"**Code Complexity:** {quality_data.get('complexity', 'N/A')}\n\n"
+            
+            for i, issue in enumerate(quality_data["issues"], 1):
+                content += f"### Issue #{i}: {issue.get('type', 'Unknown Type')}\n"
+                content += f"**File:** `{issue.get('file', 'Unknown')}`\n"
+                content += f"**Location:** {issue.get('location', 'Unknown')}\n"
+                content += f"**Impact:** {issue.get('impact', 'unknown').upper()}\n\n"
+                content += f"**Description:**\n{issue.get('description', 'No description available')}\n\n"
+                
+                if issue.get('suggestion'):
+                    content += f"**Suggestion:**\n{issue['suggestion']}\n\n"
+                
+                content += "---\n\n"
+        
+        # Documentation Issues
+        doc_data = results["agents"].get("documentation", {}).get("analysis", {})
+        if doc_data.get("missing") or doc_data.get("issues"):
+            content += "## 📚 Documentation Issues\n\n"
+            content += f"**Documentation Score:** {doc_data.get('documentation_score', 'N/A')}/100\n"
+            content += f"**Coverage:** {doc_data.get('coverage', 'N/A')}%\n\n"
+            
+            if doc_data.get("missing"):
+                content += "### Missing Documentation:\n\n"
+                for item in doc_data["missing"]:
+                    content += f"- **{item.get('type', 'Item')}:** `{item.get('name', 'Unknown')}` in `{item.get('file', 'Unknown file')}`\n"
+                    if item.get('reason'):
+                        content += f"  - *Reason:* {item['reason']}\n"
+                content += "\n"
+            
+            if doc_data.get("issues"):
+                content += "### Documentation Quality Issues:\n\n"
+                for issue in doc_data["issues"]:
+                    content += f"- {issue.get('description', 'Unknown issue')}\n"
+                content += "\n"
+        
+        # Summary and Metrics
+        if results.get("metrics"):
+            content += "## 📊 Analysis Metrics\n\n"
+            content += f"- **Agents Run:** {results['metrics'].get('agents_run', 0)}\n"
+            content += f"- **Total Tokens Used:** {results['metrics'].get('total_tokens', 0):,}\n"
+            content += f"- **Estimated Cost:** ${results['metrics'].get('total_cost', 0):.4f}\n"
+            content += f"- **Execution Time:** {results['metrics'].get('execution_time', 0):.2f}s\n\n"
+        
+        # Overall Scores Summary
+        if results.get("overall_scores"):
+            content += "## 📈 Overall Scores\n\n"
+            scores = results["overall_scores"]
+            content += f"- **Security:** {scores.get('security', 'N/A')}/100\n"
+            content += f"- **Code Quality:** {scores.get('quality', 'N/A')}/100\n"
+            content += f"- **Documentation:** {scores.get('documentation', 'N/A')}/100\n\n"
+            
+            # Calculate average
+            valid_scores = [v for v in scores.values() if isinstance(v, (int, float))]
+            if valid_scores:
+                avg_score = sum(valid_scores) / len(valid_scores)
+                content += f"**Average Score:** {avg_score:.1f}/100\n"
+        
+        return content
+    
     def write_output(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Write both summaries to their respective files"""
         logger.info("Writing output files...")
@@ -522,10 +625,27 @@ class GitCommitSummarizer:
                 f.write(state["brainlift_summary"])
             logger.info(f"Wrote brainlift: {brainlift_path}")
             
+            # Write error_log.md if multi-agent analysis was performed
+            error_log_path = None
+            if state.get("multi_agent_results") and state["multi_agent_results"].get("agents"):
+                error_log_content = self._generate_error_log(state)
+                if error_log_content:
+                    # Create error_logs directory if it doesn't exist
+                    error_log_dir = self.base_dir / "error_logs"
+                    error_log_dir.mkdir(exist_ok=True)
+                    
+                    error_log_path = error_log_dir / f"{timestamp}_error_log.md"
+                    with open(error_log_path, 'w') as f:
+                        f.write(error_log_content)
+                    logger.info(f"Wrote error log: {error_log_path}")
+            
             state["output_files"] = {
                 "context": str(context_path),
                 "brainlift": str(brainlift_path)
             }
+            
+            if error_log_path:
+                state["output_files"]["error_log"] = str(error_log_path)
             
             # Cache the complete results including multi-agent analysis
             if self.cache_manager and state.get('cache_key') and not state.get('cache_hit'):
