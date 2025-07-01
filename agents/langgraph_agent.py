@@ -5,11 +5,15 @@ Generates context.md and brainlift.md from Git commits
 """
 
 import os
+import sys
 import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path
+
+# Add parent directory to Python path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
@@ -18,8 +22,9 @@ from langgraph.graph import StateGraph, END
 import git
 
 # Import cache and budget managers
-from agents.cache import CacheManager
-from agents.budget_manager import BudgetManager
+from cache import CacheManager
+from budget_manager import BudgetManager
+from agent_orchestrator import AgentOrchestrator
 
 # Load environment variables
 load_dotenv()
@@ -79,6 +84,10 @@ class GitCommitSummarizer:
         # Initialize cache and budget managers
         self._init_cache_and_budget()
         
+        # Initialize agent orchestrator for multi-agent analysis
+        self.agent_orchestrator = None
+        self._init_agent_orchestrator()
+        
         # Initialize the graph
         self.graph = self._build_graph()
     
@@ -111,6 +120,44 @@ class GitCommitSummarizer:
             # Create dummy managers that don't cache/track
             self.cache_manager = None
             self.budget_manager = None
+    
+    def _init_agent_orchestrator(self):
+        """Initialize the agent orchestrator for multi-agent analysis"""
+        try:
+            # Get project ID and settings
+            project_id = os.getenv("PROJECT_ID")
+            if not project_id:
+                import hashlib
+                project_id = hashlib.md5(str(self.base_dir).encode()).hexdigest()[:12]
+            
+            # Get agent settings from environment or defaults
+            agent_settings = {
+                'budgetEnabled': os.getenv('BUDGET_ENABLED', 'false').lower() == 'true',
+                'commitTokenLimit': int(os.getenv('COMMIT_TOKEN_LIMIT', '10000')),
+                'execution_mode': os.getenv('AGENT_EXECUTION_MODE', 'parallel'),
+                'agents': {
+                    'security': {
+                        'enabled': os.getenv('SECURITY_AGENT_ENABLED', 'true').lower() == 'true',
+                        'model': os.getenv('SECURITY_AGENT_MODEL', 'gpt-4-turbo')
+                    },
+                    'quality': {
+                        'enabled': os.getenv('QUALITY_AGENT_ENABLED', 'true').lower() == 'true',
+                        'model': os.getenv('QUALITY_AGENT_MODEL', 'gpt-4-turbo')
+                    },
+                    'documentation': {
+                        'enabled': os.getenv('DOCUMENTATION_AGENT_ENABLED', 'true').lower() == 'true',
+                        'model': os.getenv('DOCUMENTATION_AGENT_MODEL', 'gpt-4-turbo')
+                    }
+                }
+            }
+            
+            # Initialize orchestrator
+            self.agent_orchestrator = AgentOrchestrator(project_id, agent_settings)
+            logger.info(f"Initialized agent orchestrator for project {project_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize agent orchestrator: {e}")
+            self.agent_orchestrator = None
         
     def _load_prompt(self, filename: str) -> str:
         """Load a prompt template from the prompts directory"""
@@ -129,13 +176,15 @@ class GitCommitSummarizer:
         # Define nodes
         workflow.add_node("parse_git_diff", self.parse_git_diff)
         workflow.add_node("check_cache_and_budget", self.check_cache_and_budget)
+        workflow.add_node("run_multi_agents", self.run_multi_agents)
         workflow.add_node("summarize_context", self.summarize_context)
         workflow.add_node("summarize_brainlift", self.summarize_brainlift)
         workflow.add_node("write_output", self.write_output)
         
-        # Define edges (linear flow with cache check)
+        # Define edges (linear flow with cache check and multi-agent analysis)
         workflow.add_edge("parse_git_diff", "check_cache_and_budget")
-        workflow.add_edge("check_cache_and_budget", "summarize_context")
+        workflow.add_edge("check_cache_and_budget", "run_multi_agents")
+        workflow.add_edge("run_multi_agents", "summarize_context")
         workflow.add_edge("summarize_context", "summarize_brainlift")
         workflow.add_edge("summarize_brainlift", "write_output")
         workflow.add_edge("write_output", END)
@@ -189,6 +238,50 @@ class GitCommitSummarizer:
         
         return state
     
+    def run_multi_agents(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Run multi-agent analysis if enabled"""
+        logger.info("Running multi-agent analysis...")
+        
+        # Check if multi-agent analysis is enabled
+        if not self.agent_orchestrator:
+            logger.info("Multi-agent analysis not enabled, skipping")
+            return state
+        
+        # Skip if already cached
+        if state.get('cache_hit', False):
+            logger.info("Using cached results, skipping multi-agent analysis")
+            return state
+        
+        try:
+            # Get commit info
+            commit_info = {
+                "commit_hash": state.get("commit_hash", ""),
+                "commit_message": state.get("commit_message", ""),
+                "commit_author": state.get("commit_author", ""),
+                "commit_date": state.get("commit_date", "")
+            }
+            
+            # Run multi-agent analysis
+            agent_results = self.agent_orchestrator.analyze_commit(
+                state.get("git_diff", ""),
+                commit_info
+            )
+            
+            # Store results in state
+            state["multi_agent_results"] = agent_results
+            
+            # Add agent insights to the context for summary generation
+            if agent_results.get("summary"):
+                state["agent_insights"] = agent_results["summary"]
+                
+            logger.info(f"Multi-agent analysis complete: {agent_results.get('summary', 'No summary')}")
+            
+        except Exception as e:
+            logger.error(f"Error in multi-agent analysis: {e}")
+            state["multi_agent_error"] = str(e)
+            
+        return state
+    
     def check_cache_and_budget(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Check cache for existing results and validate budget"""
         logger.info("Checking cache and budget...")
@@ -199,11 +292,11 @@ class GitCommitSummarizer:
             return state
         
         try:
-            # Create cache key from diff
-            cache_key = state["git_diff"]
+            # Create cache key from commit hash for more stable caching
+            cache_key = f"commit_with_agents:{state.get('commit_hash', 'unknown')}"
             
-            # Estimate tokens for budget check first
-            estimated_tokens = self.budget_manager.estimate_tokens(cache_key)
+            # Estimate tokens for budget check
+            estimated_tokens = self.budget_manager.estimate_tokens(state.get("git_diff", ""))
             
             # Check budget
             within_budget, budget_details = self.budget_manager.check_budget(
@@ -215,72 +308,23 @@ class GitCommitSummarizer:
             
             if not within_budget and budget_details['budget_enabled']:
                 logger.warning(f"Budget exceeded: {budget_details}")
-                # In a real implementation, you might want to handle this differently
-                # For now, we'll continue with a warning
+                # Continue with warning
             
-            # Define function to generate summaries if not cached
-            def generate_summaries(query):
-                logger.info("Generating new summaries...")
-                
-                # Generate context summary
-                context_prompt = self.context_prompt.format(
-                    commit_hash=state.get("commit_hash_display", ""),
-                    commit_message=state.get("commit_message", ""),
-                    commit_author=state.get("commit_author", ""),
-                    commit_date=state.get("commit_date", ""),
-                    git_diff=state.get("git_diff", "")
-                )
-                
-                context_response = self.llm.invoke([HumanMessage(content=context_prompt)])
-                context_summary = context_response.content
-                
-                # Generate brainlift summary
-                brainlift_prompt = self.brainlift_prompt.format(
-                    commit_hash=state.get("commit_hash_display", ""),
-                    commit_message=state.get("commit_message", ""),
-                    commit_author=state.get("commit_author", ""),
-                    commit_date=state.get("commit_date", ""),
-                    git_diff=state.get("git_diff", "")
-                )
-                
-                brainlift_response = self.llm.invoke([HumanMessage(content=brainlift_prompt)])
-                brainlift_summary = brainlift_response.content
-                
-                # Track token usage
-                if self.budget_manager:
-                    # Estimate tokens used (rough estimate)
-                    tokens_used = (len(context_summary) + len(brainlift_summary)) // 4
-                    self.budget_manager.record_usage(
-                        tokens_used,
-                        self.model,
-                        state.get("commit_hash", None)
-                    )
-                    logger.info(f"Recorded {tokens_used} tokens used")
-                
-                return {
-                    'context_summary': context_summary,
-                    'brainlift_summary': brainlift_summary
-                }
+            # Only check cache, don't generate summaries here
+            # The summaries will be generated after multi-agent analysis
+            cached_result = self.cache_manager.exact_cache.get(cache_key)
             
-            # Check cache or generate
-            cached_result = self.cache_manager.get_or_generate(
-                cache_key, 
-                generate_summaries,
-                cache_ttl=3600  # 1 hour for exact matches
-            )
-            
-            # Extract results
-            if cached_result['metadata']['cache_hit'] != 'miss':
-                logger.info(f"Cache hit: {cached_result['metadata']['cache_hit']}")
+            if cached_result is not None:
+                logger.info(f"Cache hit for commit with agents")
                 state['cache_hit'] = True
+                # Restore all cached data including agent results
+                state['context_summary'] = cached_result.get('context_summary', '')
+                state['brainlift_summary'] = cached_result.get('brainlift_summary', '')
+                state['multi_agent_results'] = cached_result.get('multi_agent_results', {})
             else:
-                logger.info("Cache miss - generated new summaries")
+                logger.info("Cache miss - will generate new summaries with agent analysis")
                 state['cache_hit'] = False
-                
-            # Store summaries in state
-            if cached_result['data']:
-                state['context_summary'] = cached_result['data'].get('context_summary', '')
-                state['brainlift_summary'] = cached_result['data'].get('brainlift_summary', '')
+                state['cache_key'] = cache_key  # Store for later caching
                 
             # Log cache stats
             stats = self.cache_manager.get_cache_stats()
@@ -288,7 +332,6 @@ class GitCommitSummarizer:
                 
         except Exception as e:
             logger.error(f"Error in cache/budget check: {e}")
-            # Continue without cache/budget features
             state['cache_hit'] = False
             
         return state
@@ -303,7 +346,42 @@ class GitCommitSummarizer:
         logger.info("Generating context summary...")
         
         try:
-            # Format the prompt
+            # Build agent analysis section if available
+            agent_analysis = ""
+            if state.get("multi_agent_results"):
+                results = state["multi_agent_results"]
+                agent_analysis = "\n\n## Multi-Agent Analysis Results:\n"
+                
+                # Add overall summary
+                if results.get("summary"):
+                    agent_analysis += f"\n**Overall Assessment:** {results['summary']}\n"
+                
+                # Add individual agent results
+                if results.get("agents"):
+                    for agent_name, agent_data in results["agents"].items():
+                        if "error" not in agent_data and "analysis" in agent_data:
+                            analysis = agent_data["analysis"]
+                            agent_analysis += f"\n### {agent_name.title()} Analysis:\n"
+                            
+                            if agent_name == "security":
+                                agent_analysis += f"- Security Score: {analysis.get('security_score', 'N/A')}/100\n"
+                                agent_analysis += f"- Severity: {analysis.get('severity', 'none')}\n"
+                                if analysis.get('vulnerabilities'):
+                                    agent_analysis += f"- Found {len(analysis['vulnerabilities'])} potential issues\n"
+                                    
+                            elif agent_name == "quality":
+                                agent_analysis += f"- Quality Score: {analysis.get('quality_score', 'N/A')}/100\n"
+                                agent_analysis += f"- Complexity: {analysis.get('complexity', 'N/A')}\n"
+                                if analysis.get('issues'):
+                                    agent_analysis += f"- Found {len(analysis['issues'])} quality issues\n"
+                                    
+                            elif agent_name == "documentation":
+                                agent_analysis += f"- Documentation Score: {analysis.get('documentation_score', 'N/A')}/100\n"
+                                agent_analysis += f"- Coverage: {analysis.get('coverage', 'N/A')}%\n"
+                                if analysis.get('missing'):
+                                    agent_analysis += f"- Missing docs for {len(analysis['missing'])} items\n"
+            
+            # Format the prompt with agent analysis appended
             prompt = self.context_prompt.format(
                 commit_hash=state.get("commit_hash_display", ""),
                 commit_message=state.get("commit_message", ""),
@@ -312,12 +390,26 @@ class GitCommitSummarizer:
                 git_diff=state.get("git_diff", "")
             )
             
+            # Append agent analysis to the prompt
+            if agent_analysis:
+                prompt += agent_analysis
+            
             # Log the prompt for debugging
             logger.debug(f"Context prompt: {prompt[:200]}...")
             
             # Generate summary
             response = self.llm.invoke([HumanMessage(content=prompt)])
             context_summary = response.content
+            
+            # Track token usage
+            if self.budget_manager:
+                tokens_used = len(prompt) // 4 + len(context_summary) // 4
+                self.budget_manager.record_usage(
+                    tokens_used,
+                    self.model,
+                    state.get("commit_hash", None)
+                )
+                logger.info(f"Recorded {tokens_used} tokens for context summary")
             
             state["context_summary"] = context_summary
             logger.info("Context summary generated successfully")
@@ -338,6 +430,39 @@ class GitCommitSummarizer:
         logger.info("Generating brainlift summary...")
         
         try:
+            # Build agent insights narrative if available
+            agent_insights = ""
+            if state.get("multi_agent_results"):
+                results = state["multi_agent_results"]
+                agent_insights = "\n\n## Automated Analysis Insights:\n"
+                
+                # Add narrative insights from each agent
+                if results.get("agents"):
+                    for agent_name, agent_data in results["agents"].items():
+                        if "error" not in agent_data and "analysis" in agent_data:
+                            analysis = agent_data["analysis"]
+                            
+                            if agent_name == "security" and analysis.get("vulnerabilities"):
+                                agent_insights += f"\n**Security Considerations:** "
+                                if analysis.get("severity") != "none":
+                                    agent_insights += f"The security scan found {analysis['severity']} severity issues that need attention. "
+                                agent_insights += "Consider reviewing the security vulnerabilities identified in this commit.\n"
+                                
+                            elif agent_name == "quality":
+                                score = analysis.get("quality_score", 0)
+                                if score < 70:
+                                    agent_insights += f"\n**Code Quality:** The code quality score of {score}/100 suggests there's room for improvement. "
+                                    agent_insights += "Consider refactoring for better maintainability.\n"
+                                elif score >= 85:
+                                    agent_insights += f"\n**Code Quality:** Excellent code quality score of {score}/100! "
+                                    agent_insights += "The code follows best practices well.\n"
+                                    
+                            elif agent_name == "documentation":
+                                doc_score = analysis.get("documentation_score", 0)
+                                if doc_score < 50:
+                                    agent_insights += f"\n**Documentation:** With a documentation score of {doc_score}/100, "
+                                    agent_insights += "this code could benefit from better documentation. Consider adding more comments and docstrings.\n"
+            
             # Format the prompt
             prompt = self.brainlift_prompt.format(
                 commit_hash=state.get("commit_hash_display", ""),
@@ -347,12 +472,26 @@ class GitCommitSummarizer:
                 git_diff=state.get("git_diff", "")
             )
             
+            # Append agent insights to make the brainlift more insightful
+            if agent_insights:
+                prompt += agent_insights
+            
             # Log the prompt for debugging
             logger.debug(f"Brainlift prompt: {prompt[:200]}...")
             
             # Generate summary
             response = self.llm.invoke([HumanMessage(content=prompt)])
             brainlift_summary = response.content
+            
+            # Track token usage
+            if self.budget_manager:
+                tokens_used = len(prompt) // 4 + len(brainlift_summary) // 4
+                self.budget_manager.record_usage(
+                    tokens_used,
+                    self.model,
+                    state.get("commit_hash", None)
+                )
+                logger.info(f"Recorded {tokens_used} tokens for brainlift summary")
             
             state["brainlift_summary"] = brainlift_summary
             logger.info("Brainlift summary generated successfully")
@@ -387,6 +526,21 @@ class GitCommitSummarizer:
                 "context": str(context_path),
                 "brainlift": str(brainlift_path)
             }
+            
+            # Cache the complete results including multi-agent analysis
+            if self.cache_manager and state.get('cache_key') and not state.get('cache_hit'):
+                cache_data = {
+                    'context_summary': state.get('context_summary', ''),
+                    'brainlift_summary': state.get('brainlift_summary', ''),
+                    'multi_agent_results': state.get('multi_agent_results', {}),
+                    'output_files': state['output_files']
+                }
+                self.cache_manager.exact_cache.set(
+                    state['cache_key'],
+                    cache_data,
+                    ttl=86400  # 24 hours
+                )
+                logger.info(f"Cached results with multi-agent analysis")
             
             # Log final stats
             if self.cache_manager:

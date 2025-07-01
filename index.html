@@ -724,6 +724,70 @@
                     <div class="help-text" id="tokenUsageText">0 / 10,000 tokens used</div>
                 </div>
                 
+                <h3 style="margin-top: 30px; margin-bottom: 20px;">Multi-Agent Configuration</h3>
+                
+                <div class="form-group">
+                    <label>Execution Mode</label>
+                    <select id="agentExecutionMode" name="agentExecutionMode">
+                        <option value="parallel">Parallel (Fastest)</option>
+                        <option value="sequential">Sequential (State sharing)</option>
+                        <option value="priority">Priority-based</option>
+                    </select>
+                    <div class="help-text">How agents should be executed</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Security Agent</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="securityAgentEnabled" name="securityAgentEnabled" checked>
+                        <label for="securityAgentEnabled">Enable security vulnerability scanning</label>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <select id="securityAgentModel" name="securityAgentModel" style="width: 200px;">
+                            <option value="gpt-4-turbo">GPT-4 Turbo ($0.01/1k)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo ($0.0015/1k)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Code Quality Agent</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="qualityAgentEnabled" name="qualityAgentEnabled" checked>
+                        <label for="qualityAgentEnabled">Enable code quality analysis</label>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <select id="qualityAgentModel" name="qualityAgentModel" style="width: 200px;">
+                            <option value="gpt-4-turbo">GPT-4 Turbo ($0.01/1k)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo ($0.0015/1k)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Documentation Agent</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="documentationAgentEnabled" name="documentationAgentEnabled" checked>
+                        <label for="documentationAgentEnabled">Enable documentation generation</label>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <select id="documentationAgentModel" name="documentationAgentModel" style="width: 200px;">
+                            <option value="gpt-4-turbo">GPT-4 Turbo ($0.01/1k)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo ($0.0015/1k)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Agent Cost Preview</label>
+                    <div id="agentCostPreview" style="padding: 10px; background: #f0f0f0; border-radius: 4px;">
+                        <div>Estimated cost per commit: <strong id="agentEstimatedCost">$0.00</strong></div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                            Based on average 1000 tokens per agent
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <button type="submit" class="button">Save Settings</button>
                 </div>
@@ -1026,6 +1090,30 @@
             budgetEnabledInput.checked = globalSettings.budgetEnabled || false;
             commitTokenLimitInput.value = globalSettings.commitTokenLimit || 10000;
             costPer1kTokensInput.value = globalSettings.costPer1kTokens || 0.002;
+            
+            // Update multi-agent settings
+            document.getElementById('agentExecutionMode').value = globalSettings.agentExecutionMode || 'parallel';
+            
+            // Security agent
+            document.getElementById('securityAgentEnabled').checked = 
+                globalSettings.agents?.security?.enabled !== false;
+            document.getElementById('securityAgentModel').value = 
+                globalSettings.agents?.security?.model || 'gpt-4-turbo';
+                
+            // Quality agent
+            document.getElementById('qualityAgentEnabled').checked = 
+                globalSettings.agents?.quality?.enabled !== false;
+            document.getElementById('qualityAgentModel').value = 
+                globalSettings.agents?.quality?.model || 'gpt-4-turbo';
+                
+            // Documentation agent
+            document.getElementById('documentationAgentEnabled').checked = 
+                globalSettings.agents?.documentation?.enabled !== false;
+            document.getElementById('documentationAgentModel').value = 
+                globalSettings.agents?.documentation?.model || 'gpt-4-turbo';
+                
+            // Update cost preview
+            updateAgentCostPreview();
         }
         
         function showSettingsModal() {
@@ -1044,7 +1132,23 @@
                 apiKey: apiKeyInput.value,
                 budgetEnabled: budgetEnabledInput.checked,
                 commitTokenLimit: parseInt(commitTokenLimitInput.value),
-                costPer1kTokens: parseFloat(costPer1kTokensInput.value)
+                costPer1kTokens: parseFloat(costPer1kTokensInput.value),
+                // Multi-agent settings
+                agentExecutionMode: document.getElementById('agentExecutionMode').value,
+                agents: {
+                    security: {
+                        enabled: document.getElementById('securityAgentEnabled').checked,
+                        model: document.getElementById('securityAgentModel').value
+                    },
+                    quality: {
+                        enabled: document.getElementById('qualityAgentEnabled').checked,
+                        model: document.getElementById('qualityAgentModel').value
+                    },
+                    documentation: {
+                        enabled: document.getElementById('documentationAgentEnabled').checked,
+                        model: document.getElementById('documentationAgentModel').value
+                    }
+                }
             };
             
             try {
@@ -1242,6 +1346,38 @@
             }
         }
         
+        // Function to update agent cost preview
+        function updateAgentCostPreview() {
+            const modelCosts = {
+                'gpt-4-turbo': 0.01,
+                'gpt-3.5-turbo': 0.0015
+            };
+            
+            let totalCost = 0;
+            const tokensPerAgent = 1000; // Average estimate
+            
+            // Calculate cost for each enabled agent
+            if (document.getElementById('securityAgentEnabled').checked) {
+                const model = document.getElementById('securityAgentModel').value;
+                totalCost += (tokensPerAgent / 1000) * modelCosts[model];
+            }
+            
+            if (document.getElementById('qualityAgentEnabled').checked) {
+                const model = document.getElementById('qualityAgentModel').value;
+                totalCost += (tokensPerAgent / 1000) * modelCosts[model];
+            }
+            
+            if (document.getElementById('documentationAgentEnabled').checked) {
+                const model = document.getElementById('documentationAgentModel').value;
+                totalCost += (tokensPerAgent / 1000) * modelCosts[model];
+            }
+            
+            // Add base brainlift cost
+            totalCost += (2000 / 1000) * 0.01; // Assume 2000 tokens for base summaries
+            
+            document.getElementById('agentEstimatedCost').textContent = `$${totalCost.toFixed(4)}`;
+        }
+        
         // Event listeners
         generateBtn.addEventListener('click', generateSummary);
         
@@ -1255,6 +1391,14 @@
         changeProjectBtn.addEventListener('click', changeProjectDirectory);
         settingsBtn.addEventListener('click', showSettingsModal);
         settingsForm.addEventListener('submit', saveSettings);
+        
+        // Multi-agent event listeners
+        document.getElementById('securityAgentEnabled').addEventListener('change', updateAgentCostPreview);
+        document.getElementById('securityAgentModel').addEventListener('change', updateAgentCostPreview);
+        document.getElementById('qualityAgentEnabled').addEventListener('change', updateAgentCostPreview);
+        document.getElementById('qualityAgentModel').addEventListener('change', updateAgentCostPreview);
+        document.getElementById('documentationAgentEnabled').addEventListener('change', updateAgentCostPreview);
+        document.getElementById('documentationAgentModel').addEventListener('change', updateAgentCostPreview);
         
         // Cache & Budget event listeners
         clearCacheBtn.addEventListener('click', clearCache);

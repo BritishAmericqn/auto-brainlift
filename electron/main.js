@@ -93,6 +93,9 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
     logToFile(`Manual summary generation triggered for project: ${currentProject.name}${commitHash ? ` for commit: ${commitHash}` : ''}`);
     projectManager.logToProject(currentProject.id, `Manual summary generation triggered${commitHash ? ` for commit: ${commitHash}` : ''}`);
     
+    // Get global settings for API key
+    const globalSettings = await projectManager.getGlobalSettings();
+    
     return new Promise((resolve, reject) => {
       // Spawn Python process
       const pythonPath = path.join(__dirname, '../venv/bin/python');
@@ -113,13 +116,25 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
         cwd: currentProject.path, // Run from project directory
         env: { 
           ...process.env,
+          // Set PYTHONPATH to include the auto-brainlift directory for imports
+          PYTHONPATH: path.join(__dirname, '..'),
+          // Pass OpenAI API key
+          OPENAI_API_KEY: globalSettings.apiKey || '',
           // Pass project context
           PROJECT_PATH: currentProject.path,
           PROJECT_NAME: currentProject.name,
           PROJECT_ID: currentProject.id,
           // Pass budget settings
           BUDGET_ENABLED: currentProject.settings.budgetEnabled ? 'true' : 'false',
-          COMMIT_TOKEN_LIMIT: String(currentProject.settings.commitTokenLimit || 10000)
+          COMMIT_TOKEN_LIMIT: String(currentProject.settings.commitTokenLimit || 10000),
+          // Pass multi-agent settings
+          AGENT_EXECUTION_MODE: currentProject.settings.agentExecutionMode || 'parallel',
+          SECURITY_AGENT_ENABLED: currentProject.settings.agents?.security?.enabled !== false ? 'true' : 'false',
+          SECURITY_AGENT_MODEL: currentProject.settings.agents?.security?.model || 'gpt-4-turbo',
+          QUALITY_AGENT_ENABLED: currentProject.settings.agents?.quality?.enabled !== false ? 'true' : 'false',
+          QUALITY_AGENT_MODEL: currentProject.settings.agents?.quality?.model || 'gpt-4-turbo',
+          DOCUMENTATION_AGENT_ENABLED: currentProject.settings.agents?.documentation?.enabled !== false ? 'true' : 'false',
+          DOCUMENTATION_AGENT_MODEL: currentProject.settings.agents?.documentation?.model || 'gpt-4-turbo'
         }
       });
       
