@@ -100,13 +100,18 @@ auto-brainlift/
 ├── context_logs/       # AI context outputs
 ├── electron/           # Electron main process
 ├── logs/              # Application logs
+├── mcp-integration/    # Cursor IDE integration (NEW)
+│   ├── mcp-server.js  # MCP server for Cursor
+│   └── README.md      # MCP setup instructions
 ├── prompts/           # AI prompt templates
 │   ├── context.txt    # Template for technical summaries
 │   └── brainlift.txt  # Template for reflective entries
 ├── ui/                # UI components
 ├── .env               # Environment configuration
 ├── index.html         # Main UI (vanilla HTML/JS)
-└── package.json       # Node dependencies
+├── package.json       # Node dependencies
+├── EXPANSION_PLAN.md  # Roadmap for new features (NEW)
+└── PITFALLS_TO_AVOID.md # Common mistakes guide (NEW)
 ```
 
 ## Configuration
@@ -203,6 +208,28 @@ python test_agent.py
 3. Update prompts if needed
 4. Test with manual trigger first
 
+## 🚀 Expansion Features (Coming Soon)
+
+### Cursor IDE Integration
+Auto-Brainlift now includes experimental MCP (Model Context Protocol) integration for Cursor:
+
+```bash
+# Start MCP server
+node mcp-integration/mcp-server.js
+
+# In Cursor chat:
+"Generate an auto-brainlift summary for my latest commit"
+```
+
+See [mcp-integration/README.md](mcp-integration/README.md) for setup instructions.
+
+### Planned Features
+- **Multi-Project Support**: Manage summaries across multiple repositories
+- **AI Agent Orchestration**: Security scanning, code quality analysis
+- **Enhanced Cursor Integration**: CLI tools, clipboard integration
+
+For the complete roadmap, see [EXPANSION_PLAN.md](EXPANSION_PLAN.md).
+
 ## Contributing
 
 1. Fork the repository
@@ -210,6 +237,12 @@ python test_agent.py
 3. Make your changes
 4. Test thoroughly
 5. Submit a pull request
+
+### Development Guidelines
+- Read [PITFALLS_TO_AVOID.md](PITFALLS_TO_AVOID.md) before starting
+- Keep the architecture simple and maintainable
+- Test edge cases thoroughly
+- Document any new features
 
 ## License
 

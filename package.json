@@ -9,10 +9,19 @@
     "dev": "electron .",
     "test": "echo \"Tests will be added\" && exit 0"
   },
-  "keywords": ["electron", "git", "ai", "summarization"],
+  "keywords": [
+    "electron",
+    "git",
+    "ai",
+    "summarization"
+  ],
   "author": "Auto-Brainlift Team",
   "license": "MIT",
   "devDependencies": {
     "electron": "^30.0.1"
+  },
+  "dependencies": {
+    "electron-settings": "^4.0.4",
+    "uuid": "^11.1.0"
   }
 }

@@ -161,14 +161,221 @@ Auto-Brainlift Expanded Build Checklist (Line-by-Line for Cursor)
 > Always log. Debugging LangGraph without logs is painful.
 
 ==========================================================
-8️⃣ FINAL POLISH AND SUBMISSION
+8️⃣ EXPANSION: UI ENHANCEMENTS & MULTI-PROJECT SUPPORT
 ==========================================================
 
-- [ ] Test: make a commit → two files generated → view in UI
-- [ ] Add README.md with:
-      - Setup
-      - Manual trigger
-      - Git hook setup
-      - Dependencies
-- [ ] Record demo video
-- [ ] Submit GitHub repo, app package, Brainlift log, and social media post
+==========================================================
+8️⃣ UI ENHANCEMENTS & MULTI-PROJECT SUPPORT
+==========================================================
+
+- [x] Add project management UI controls:
+      - "Change Project Directory" button
+      - "Add New Project" button  
+      - "Switch Project" dropdown
+      - "View Project History" button
+      - "Settings" button (API keys, budgets)
+
+- [x] Create project state display:
+      - Current project path indicator
+      - Token usage meter (visual progress bar)
+      - Cost tracker showing "$X.XX spent today"
+      - Cache hit rate percentage display
+
+- [x] Implement quick actions bar:
+      - "Generate Summary Now" override button
+      - "Clear Cache" with confirmation
+      - "Export Summaries" to CSV/JSON
+
+- [x] Set up project registry (~/.auto-brainlift/projects.json):
+      - Unique project IDs
+      - Project paths and names
+      - Last processed commit hash
+      - Per-project settings (token budgets, enabled agents)
+
+- [x] Create per-project storage structure:
+      ~/.auto-brainlift/
+      ├── projects.json
+      ├── cache/
+      │   └── project-id/
+      │       ├── semantic.db
+      │       └── exact.db
+      └── outputs/
+          └── project-id/
+
+✅ Pitfall Guard:
+> Store all project data outside Git repos to avoid conflicts. Use UUIDs for project IDs.
+
+==========================================================
+9️⃣ SMART CACHING & COST OPTIMIZATION
+==========================================================
+
+- [ ] Implement 3-tier caching system:
+      - Level 1: Exact match cache (50ms response)
+      - Level 2: Semantic cache (2s response)
+      - Level 3: Full LLM processing (6s response)
+
+- [ ] Set up exact match cache:
+      - In-memory hashmap for speed
+      - MD5 hash of queries as keys
+      - TTL of 3600 seconds (1 hour)
+
+- [ ] Create semantic cache with embeddings:
+      - Use text-embedding-ada-002 ($0.0001/1K tokens)
+      - Store embeddings in vector database
+      - Similarity threshold of 0.85
+      - TTL of 86400 seconds (24 hours)
+
+- [ ] Build smart query router:
+      - Check exact cache first
+      - Fall back to semantic cache
+      - Use GPT-3.5 for simple tasks
+      - Reserve GPT-4 for complex analysis
+
+- [ ] Implement diff chunking:
+      - 1000 character chunks
+      - 100 character overlap
+      - Preserve semantic boundaries (functions, classes)
+
+- [ ] Add token budget manager:
+      - User-configurable per-commit limits (1k-50k tokens)
+      - Enable/disable toggle for testing
+      - Estimated cost preview before processing
+      - Visual budget status indicators
+      - "Bypass Budget" developer mode
+
+✅ Pitfall Guard:
+> Always check cheaper options first. Cache embeddings permanently as they're cheap to store.
+
+==========================================================
+🔟 CONFIGURABLE MULTI-AGENT SYSTEM
+==========================================================
+
+- [ ] Create base agent framework:
+      - Abstract agent class
+      - Shared state management
+      - Result aggregation
+
+- [ ] Implement specialized agents:
+      - Security scanner (patterns + LLM)
+      - Code quality analyzer
+      - Documentation generator
+      - Each with cost estimates
+
+- [ ] Build agent configuration UI:
+      - Toggle switches per agent
+      - Cost preview per agent
+      - Priority ordering
+      - Custom prompt editing
+
+- [ ] Add budget allocation system:
+      - Percentage-based allocation
+      - Dynamic adjustment based on usage
+      - Visual budget pie chart
+
+- [ ] Create orchestration logic:
+      - Parallel execution when budget allows
+      - Sequential fallback for tight budgets
+      - Result merging and deduplication
+
+✅ Pitfall Guard:
+> Keep agents independent. One agent failure shouldn't break others.
+
+==========================================================
+1️⃣1️⃣ PRODUCTION HARDENING & MONITORING
+==========================================================
+
+- [ ] Implement comprehensive error handling:
+      - Try-catch around all LLM calls
+      - Graceful degradation to cached results
+      - User-friendly error messages
+
+- [ ] Add retry logic:
+      - Exponential backoff (1, 2, 4, 8 seconds)
+      - Maximum 3 retry attempts
+      - Different endpoints on retry
+
+- [ ] Set resource limits:
+      - Max file size: 10MB
+      - Max diff size: 100KB
+      - LLM timeout: 30 seconds
+
+- [ ] Create usage analytics dashboard:
+      - Daily/weekly/monthly API calls
+      - Cost breakdown by agent
+      - Cache hit rates graph
+      - Error rate tracking
+
+- [ ] Build export functionality:
+      - CSV export for accounting
+      - JSON export for analysis
+      - Automated monthly reports
+
+- [ ] Optimize performance:
+      - Parallel diff processing
+      - File type filtering (.jpg, .png skip)
+      - Background agent processing
+
+✅ Pitfall Guard:
+> Monitor everything but store metrics locally. Never send usage data to external services.
+
+==========================================================
+1️⃣2️⃣ TESTING & VALIDATION
+==========================================================
+
+- [ ] Test multi-project scenarios:
+      - Switching between 5+ projects rapidly
+      - Concurrent commits in different projects
+      - Project deletion and recreation
+
+- [ ] Validate caching effectiveness:
+      - Measure hit rates (target >60%)
+      - Verify cost reduction (target 10x)
+      - Test cache invalidation
+
+- [ ] Load test the system:
+      - 1000+ commits simulation
+      - Large files (5MB+)
+      - Concurrent operations
+
+- [ ] Test failure scenarios:
+      - API downtime
+      - Rate limiting
+      - Network failures
+      - Corrupted cache
+
+- [ ] Platform testing:
+      - Windows path handling
+      - macOS permissions
+      - Linux Python paths
+
+✅ Pitfall Guard:
+> Test edge cases early. It's easier to fix architecture issues before launch.
+
+==========================================================
+1️⃣3️⃣ FINAL POLISH AND SUBMISSION
+==========================================================
+
+- [ ] Update documentation:
+      - New UI features guide
+      - Multi-project setup
+      - Caching explanation
+      - Cost optimization tips
+
+- [ ] Create demo materials:
+      - Video showing multi-project switching
+      - Screenshot of cost savings
+      - Performance comparison graphs
+
+- [ ] Package for distribution:
+      - Include default settings
+      - First-run setup wizard
+      - Migration from v1 guide
+
+- [ ] Final checklist:
+      - All tests passing
+      - Documentation complete
+      - No hardcoded values
+      - Clean Git history
+
+✅ Pitfall Guard:
+> Don't rush the polish. A smooth user experience is worth the extra effort.

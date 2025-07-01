@@ -2,9 +2,29 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const { dialog } = require('electron');
+const ProjectManager = require('./projectManager');
 
 // Keep a global reference of the window object
 let mainWindow;
+let projectManager;
+
+// Initialize project manager
+async function initializeProjectManager() {
+  projectManager = new ProjectManager();
+  
+  // Wait for settings to be initialized
+  await projectManager.initializeSettings();
+  await projectManager.loadFromSettings();
+  
+  // Check if we have a current project, if not, use the app directory as default
+  const currentProject = projectManager.getCurrentProject();
+  if (!currentProject) {
+    // Create a default project for the current app directory
+    const appPath = path.join(__dirname, '..');
+    await projectManager.createProject(appPath, 'Auto-Brainlift Default');
+  }
+}
 
 function createWindow() {
   // Create the browser window
@@ -36,7 +56,19 @@ function createWindow() {
 }
 
 // This method will be called when Electron has finished initialization
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  // Initialize project manager first
+  await initializeProjectManager();
+  
+  // Then create window
+  createWindow();
+  
+  app.on('activate', function () {
+    if (mainWindow === null) {
+      createWindow();
+    }
+  });
+});
 
 // Quit when all windows are closed
 app.on('window-all-closed', () => {
@@ -45,17 +77,21 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('activate', () => {
-  if (mainWindow === null) {
-    createWindow();
-  }
-});
-
 // IPC handlers for communication with renderer process
 ipcMain.handle('generate-summary', async (event, commitHash) => {
   try {
+    // Get current project
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return {
+        success: false,
+        error: 'No project selected'
+      };
+    }
+    
     // Log the action
-    logToFile(`Manual summary generation triggered${commitHash ? ` for commit: ${commitHash}` : ''}`);
+    logToFile(`Manual summary generation triggered for project: ${currentProject.name}${commitHash ? ` for commit: ${commitHash}` : ''}`);
+    projectManager.logToProject(currentProject.id, `Manual summary generation triggered${commitHash ? ` for commit: ${commitHash}` : ''}`);
     
     return new Promise((resolve, reject) => {
       // Spawn Python process
@@ -66,6 +102,7 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
       const pythonCommand = fs.existsSync(pythonPath) ? pythonPath : 'python3';
       
       const args = [scriptPath];
+      // Pass commit hash as a simple argument if provided
       if (commitHash) {
         args.push(commitHash);
       }
@@ -73,8 +110,13 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
       logToFile(`Spawning Python process: ${pythonCommand} ${args.join(' ')}`);
       
       const pythonProcess = spawn(pythonCommand, args, {
-        cwd: path.join(__dirname, '..'),
-        env: { ...process.env }
+        cwd: currentProject.path, // Run from project directory
+        env: { 
+          ...process.env,
+          // Pass project path as environment variable instead
+          PROJECT_PATH: currentProject.path,
+          PROJECT_NAME: currentProject.name
+        }
       });
       
       let output = '';
@@ -139,22 +181,202 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
 
 ipcMain.handle('get-latest-files', async () => {
   try {
-    const brainliftDir = path.join(__dirname, '../brainlifts');
-    const contextDir = path.join(__dirname, '../context_logs');
+    // Get current project
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return {
+        brainlift: null,
+        context: null,
+        error: 'No project selected'
+      };
+    }
     
-    // Get latest files from each directory
-    const latestBrainlift = await getLatestFile(brainliftDir);
-    const latestContext = await getLatestFile(contextDir);
+    // Get project-specific paths
+    const paths = projectManager.getProjectOutputPaths(currentProject.id);
+    if (!paths) {
+      return {
+        brainlift: null,
+        context: null,
+        error: 'Invalid project paths'
+      };
+    }
+    
+    // Get latest files from project directories
+    const latestBrainlift = await getLatestFile(paths.brainlifts);
+    const latestContext = await getLatestFile(paths.contextLogs);
     
     return {
       brainlift: latestBrainlift,
-      context: latestContext
+      context: latestContext,
+      projectName: currentProject.name
     };
   } catch (error) {
     logToFile(`Error getting latest files: ${error.message}`);
     return {
       brainlift: null,
-      context: null
+      context: null,
+      error: error.message
+    };
+  }
+});
+
+// Project management IPC handlers
+ipcMain.handle('project:create', async (event, projectPath, name) => {
+  try {
+    const result = await projectManager.createProject(projectPath, name);
+    if (result.success) {
+      // Notify renderer of project list change
+      mainWindow.webContents.send('project:list-changed');
+    }
+    return result;
+  } catch (error) {
+    logToFile(`Error creating project: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('project:switch', async (event, projectId) => {
+  try {
+    const result = await projectManager.switchProject(projectId);
+    if (result.success) {
+      // Notify renderer of current project change
+      mainWindow.webContents.send('project:current-changed', result.project);
+    }
+    return result;
+  } catch (error) {
+    logToFile(`Error switching project: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('project:remove', async (event, projectId) => {
+  try {
+    const result = await projectManager.removeProject(projectId);
+    if (result.success) {
+      // Notify renderer of project list change
+      mainWindow.webContents.send('project:list-changed');
+    }
+    return result;
+  } catch (error) {
+    logToFile(`Error removing project: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('project:get-all', async () => {
+  try {
+    return {
+      success: true,
+      projects: projectManager.getAllProjects()
+    };
+  } catch (error) {
+    logToFile(`Error getting projects: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('project:get-current', async () => {
+  try {
+    return {
+      success: true,
+      project: projectManager.getCurrentProject()
+    };
+  } catch (error) {
+    logToFile(`Error getting current project: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('project:update-settings', async (event, projectId, settings) => {
+  try {
+    const result = await projectManager.updateProjectSettings(projectId, settings);
+    if (result.success) {
+      // Notify renderer of settings change
+      mainWindow.webContents.send('project:settings-changed', result.project);
+    }
+    return result;
+  } catch (error) {
+    logToFile(`Error updating project settings: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('settings:get-global', async () => {
+  try {
+    const settings = await projectManager.getGlobalSettings();
+    return {
+      success: true,
+      settings: settings
+    };
+  } catch (error) {
+    logToFile(`Error getting global settings: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('settings:update-global', async (event, settings) => {
+  try {
+    const result = await projectManager.updateGlobalSettings(settings);
+    if (result.success) {
+      // Notify renderer of settings change
+      mainWindow.webContents.send('settings:global-changed', result.settings);
+    }
+    return result;
+  } catch (error) {
+    logToFile(`Error updating global settings: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// Dialog handlers
+ipcMain.handle('dialog:select-directory', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: 'Select Project Directory',
+      buttonLabel: 'Select Folder'
+    });
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+      return {
+        success: true,
+        path: result.filePaths[0]
+      };
+    }
+    
+    return {
+      success: false,
+      canceled: true
+    };
+  } catch (error) {
+    logToFile(`Error showing directory dialog: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
     };
   }
 });

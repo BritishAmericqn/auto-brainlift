@@ -228,6 +228,270 @@
                 grid-template-columns: 1fr;
             }
         }
+        
+        /* Project Management Styles */
+        .project-toolbar {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+        
+        .project-selector {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .project-selector label {
+            font-weight: 500;
+            color: var(--color-text);
+            white-space: nowrap;
+        }
+        
+        .project-dropdown {
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background-color: var(--color-background);
+            font-size: var(--font-size-base);
+            color: var(--color-text);
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+        
+        .project-dropdown:hover {
+            border-color: var(--color-primary);
+        }
+        
+        .project-dropdown:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+        }
+        
+        .project-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+        
+        .button-secondary {
+            background-color: var(--color-surface);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .button-secondary:hover {
+            background-color: var(--color-border);
+            transform: translateY(-1px);
+        }
+        
+        .button-secondary:active {
+            transform: translateY(0);
+        }
+        
+        .project-status {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--color-success);
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: var(--color-background);
+            border-radius: 8px;
+            padding: var(--spacing-xl);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .modal-header h2 {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all var(--transition-base);
+        }
+        
+        .close-button:hover {
+            background-color: var(--color-surface);
+        }
+        
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: var(--spacing-xs);
+            color: var(--color-text);
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            font-size: var(--font-size-base);
+            color: var(--color-text);
+            background-color: var(--color-background);
+            transition: all var(--transition-base);
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+        }
+        
+        .form-group input[readonly] {
+            background-color: var(--color-surface);
+            color: var(--color-text-secondary);
+            cursor: not-allowed;
+        }
+        
+        .form-group .help-text {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+        
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .toggle-switch input[type="checkbox"] {
+            width: 44px;
+            height: 24px;
+            -webkit-appearance: none;
+            appearance: none;
+            background-color: var(--color-border);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color var(--transition-base);
+        }
+        
+        .toggle-switch input[type="checkbox"]:checked {
+            background-color: var(--color-primary);
+        }
+        
+        .toggle-switch input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: white;
+            top: 2px;
+            left: 2px;
+            transition: transform var(--transition-base);
+        }
+        
+        .toggle-switch input[type="checkbox"]:checked::before {
+            transform: translateX(20px);
+        }
+        
+        /* Token meter */
+        .token-meter {
+            background-color: var(--color-surface);
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .token-meter-fill {
+            background-color: var(--color-primary);
+            height: 100%;
+            transition: width var(--transition-base);
+        }
+        
+        .token-meter-fill.warning {
+            background-color: #f59e0b;
+        }
+        
+        .token-meter-fill.danger {
+            background-color: var(--color-error);
+        }
     </style>
 </head>
 <body>
@@ -236,6 +500,32 @@
             <h1>🧠 Auto-Brainlift</h1>
             <p class="subtitle">Automatic development summaries powered by AI</p>
         </header>
+        
+        <!-- Project Management Toolbar -->
+        <section class="project-toolbar">
+            <div class="project-selector">
+                <label for="projectDropdown">Current Project:</label>
+                <select id="projectDropdown" class="project-dropdown">
+                    <option value="">Loading projects...</option>
+                </select>
+            </div>
+            
+            <div class="project-actions">
+                <button id="changeProjectBtn" class="button-secondary">
+                    <span>📁 Change Directory</span>
+                </button>
+                <button id="settingsBtn" class="button-secondary">
+                    <span>⚙️ Settings</span>
+                </button>
+            </div>
+            
+            <div class="project-status">
+                <div class="status-item">
+                    <span class="status-dot"></span>
+                    <span id="projectPath">No project selected</span>
+                </div>
+            </div>
+        </section>
         
         <section class="controls">
             <h2>Manual Generation</h2>
@@ -268,6 +558,84 @@
         </section>
     </div>
     
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="close-button" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            
+            <form id="settingsForm">
+                <div class="form-group">
+                    <label for="apiKey">OpenAI API Key</label>
+                    <input type="password" id="apiKey" name="apiKey" placeholder="sk-...">
+                    <div class="help-text">Your API key is stored securely on your local machine</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Budget Management</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="budgetEnabled" name="budgetEnabled">
+                        <label for="budgetEnabled">Enable per-commit token limits</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="commitTokenLimit">Per-Commit Token Limit</label>
+                    <input type="number" id="commitTokenLimit" name="commitTokenLimit" min="1000" max="50000" value="10000">
+                    <div class="help-text">Maximum tokens to use per commit (1k-50k)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="costPer1kTokens">Cost per 1k Tokens ($)</label>
+                    <input type="number" id="costPer1kTokens" name="costPer1kTokens" step="0.001" value="0.002">
+                    <div class="help-text">Used to estimate costs (default: $0.002)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Token Usage</label>
+                    <div class="token-meter">
+                        <div id="tokenMeterFill" class="token-meter-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="help-text" id="tokenUsageText">0 / 10,000 tokens used</div>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="button">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- New Project Modal -->
+    <div id="newProjectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Project</h2>
+                <button class="close-button" onclick="closeNewProjectModal()">&times;</button>
+            </div>
+            
+            <form id="newProjectForm">
+                <div class="form-group">
+                    <label for="projectPath">Project Path</label>
+                    <input type="text" id="projectPath" name="projectPath" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectName">Project Name</label>
+                    <input type="text" id="projectName" name="projectName" placeholder="My Awesome Project" required>
+                    <div class="help-text">Give your project a memorable name</div>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="button">Add Project</button>
+                    <button type="button" class="button-secondary" onclick="closeNewProjectModal()" style="margin-left: 10px;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script>
         // UI Elements
         const generateBtn = document.getElementById('generateBtn');
@@ -276,6 +644,34 @@
         const brainliftOutput = document.getElementById('brainliftOutput');
         const contextTimestamp = document.getElementById('contextTimestamp');
         const brainliftTimestamp = document.getElementById('brainliftTimestamp');
+        
+        // Project management elements
+        const projectDropdown = document.getElementById('projectDropdown');
+        const changeProjectBtn = document.getElementById('changeProjectBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const projectPath = document.getElementById('projectPath');
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsForm = document.getElementById('settingsForm');
+        
+        // Settings form elements
+        const apiKeyInput = document.getElementById('apiKey');
+        const budgetEnabledInput = document.getElementById('budgetEnabled');
+        const commitTokenLimitInput = document.getElementById('commitTokenLimit');
+        const costPer1kTokensInput = document.getElementById('costPer1kTokens');
+        const tokenMeterFill = document.getElementById('tokenMeterFill');
+        const tokenUsageText = document.getElementById('tokenUsageText');
+        
+        // New project modal elements
+        const newProjectModal = document.getElementById('newProjectModal');
+        const newProjectForm = document.getElementById('newProjectForm');
+        const projectPathInput = document.getElementById('projectPath');
+        const projectNameInput = document.getElementById('projectName');
+        
+        // State
+        let currentProject = null;
+        let projects = [];
+        let globalSettings = {};
+        let pendingProjectPath = null; // Store path while waiting for name
         
         // Show status message
         function showStatus(message, type = 'success') {
@@ -310,6 +706,17 @@
             try {
                 const result = await window.electronAPI.getLatestFiles();
                 
+                // Clear existing content first
+                contextOutput.innerHTML = '<div class="empty-state">No context log generated yet</div>';
+                brainliftOutput.innerHTML = '<div class="empty-state">No brainlift generated yet</div>';
+                contextTimestamp.textContent = '';
+                brainliftTimestamp.textContent = '';
+                
+                if (result.error) {
+                    console.log('Error loading files:', result.error);
+                    return;
+                }
+                
                 if (result.context) {
                     contextOutput.textContent = result.context.content;
                     contextTimestamp.textContent = formatTimestamp(result.context.timestamp);
@@ -319,8 +726,18 @@
                     brainliftOutput.textContent = result.brainlift.content;
                     brainliftTimestamp.textContent = formatTimestamp(result.brainlift.timestamp);
                 }
+                
+                // Update project name in header if available
+                if (result.projectName && currentProject) {
+                    // Project name is already shown in dropdown
+                }
             } catch (error) {
                 console.error('Error loading latest files:', error);
+                // Clear content on error
+                contextOutput.innerHTML = '<div class="empty-state">No context log generated yet</div>';
+                brainliftOutput.innerHTML = '<div class="empty-state">No brainlift generated yet</div>';
+                contextTimestamp.textContent = '';
+                brainliftTimestamp.textContent = '';
             }
         }
         
@@ -356,8 +773,260 @@
             }
         }
         
+        // Project Management Functions
+        async function loadProjects() {
+            try {
+                const result = await window.electronAPI.project.getAll();
+                if (result.success) {
+                    projects = result.projects;
+                    updateProjectDropdown();
+                }
+            } catch (error) {
+                console.error('Error loading projects:', error);
+            }
+        }
+        
+        async function loadCurrentProject() {
+            try {
+                const result = await window.electronAPI.project.getCurrent();
+                if (result.success && result.project) {
+                    currentProject = result.project;
+                    updateProjectUI();
+                }
+            } catch (error) {
+                console.error('Error loading current project:', error);
+            }
+        }
+        
+        function updateProjectDropdown() {
+            projectDropdown.innerHTML = '';
+            
+            if (projects.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No projects found';
+                projectDropdown.appendChild(option);
+                return;
+            }
+            
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                if (currentProject && project.id === currentProject.id) {
+                    option.selected = true;
+                }
+                projectDropdown.appendChild(option);
+            });
+        }
+        
+        function updateProjectUI() {
+            if (currentProject) {
+                projectPath.textContent = currentProject.path;
+                projectDropdown.value = currentProject.id;
+                
+                // Update token meter if budget is enabled
+                if (currentProject.settings.budgetEnabled) {
+                    updateTokenMeter(0); // TODO: Get actual usage
+                }
+            } else {
+                projectPath.textContent = 'No project selected';
+            }
+        }
+        
+        async function switchProject(projectId) {
+            try {
+                const result = await window.electronAPI.project.switch(projectId);
+                if (result.success) {
+                    currentProject = result.project;
+                    updateProjectUI();
+                    loadLatestFiles();
+                    showStatus(`Switched to project: ${result.project.name}`, 'success');
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function changeProjectDirectory() {
+            try {
+                // Show native directory picker
+                const result = await window.electronAPI.dialog.selectDirectory();
+                
+                if (!result.success || result.canceled) {
+                    return; // User canceled
+                }
+                
+                // Store the path and show the project name modal
+                pendingProjectPath = result.path;
+                projectPathInput.value = result.path;
+                projectNameInput.value = result.path.split('/').pop() || 'My Project';
+                showNewProjectModal();
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Settings Functions
+        async function loadGlobalSettings() {
+            try {
+                const result = await window.electronAPI.settings.getGlobal();
+                if (result.success) {
+                    globalSettings = result.settings;
+                    updateSettingsForm();
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+        
+        function updateSettingsForm() {
+            apiKeyInput.value = globalSettings.apiKey || '';
+            budgetEnabledInput.checked = globalSettings.budgetEnabled || false;
+            commitTokenLimitInput.value = globalSettings.commitTokenLimit || 10000;
+            costPer1kTokensInput.value = globalSettings.costPer1kTokens || 0.002;
+        }
+        
+        function showSettingsModal() {
+            settingsModal.classList.add('show');
+            loadGlobalSettings();
+        }
+        
+        function closeSettingsModal() {
+            settingsModal.classList.remove('show');
+        }
+        
+        async function saveSettings(event) {
+            event.preventDefault();
+            
+            const settings = {
+                apiKey: apiKeyInput.value,
+                budgetEnabled: budgetEnabledInput.checked,
+                commitTokenLimit: parseInt(commitTokenLimitInput.value),
+                costPer1kTokens: parseFloat(costPer1kTokensInput.value)
+            };
+            
+            try {
+                const result = await window.electronAPI.settings.updateGlobal(settings);
+                if (result.success) {
+                    showStatus('Settings saved successfully!', 'success');
+                    closeSettingsModal();
+                } else {
+                    showStatus('Error saving settings', 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // New Project Modal Functions
+        function showNewProjectModal() {
+            if (pendingProjectPath) {
+                projectPathInput.value = pendingProjectPath;
+                projectNameInput.value = pendingProjectPath.split('/').pop() || 'My Project';
+            }
+            newProjectModal.classList.add('show');
+            projectNameInput.focus();
+            projectNameInput.select();
+        }
+        
+        function closeNewProjectModal() {
+            newProjectModal.classList.remove('show');
+            pendingProjectPath = null;
+            newProjectForm.reset();
+        }
+        
+        async function createNewProject(event) {
+            event.preventDefault();
+            
+            if (!pendingProjectPath) {
+                showStatus('Error: No project path selected', 'error');
+                return;
+            }
+            
+            const projectName = projectNameInput.value.trim();
+            if (!projectName) {
+                showStatus('Error: Project name is required', 'error');
+                return;
+            }
+            
+            try {
+                const result = await window.electronAPI.project.create(pendingProjectPath, projectName);
+                if (result.success) {
+                    await loadProjects();
+                    await switchProject(result.project.id);
+                    showStatus(`Project added: ${projectName}`, 'success');
+                    closeNewProjectModal();
+                } else {
+                    // Close modal even on error
+                    closeNewProjectModal();
+                    
+                    if (result.error.includes('already exists')) {
+                        // If project exists, switch to it
+                        if (result.project) {
+                            await switchProject(result.project.id);
+                            showStatus('Switched to existing project', 'warning');
+                        } else {
+                            showStatus(`Error: ${result.error}`, 'error');
+                        }
+                    } else {
+                        showStatus(`Error: ${result.error}`, 'error');
+                    }
+                }
+            } catch (error) {
+                closeNewProjectModal();
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateTokenMeter(usedTokens) {
+            const limit = currentProject?.settings?.commitTokenLimit || 10000;
+            const percentage = (usedTokens / limit) * 100;
+            
+            tokenMeterFill.style.width = `${Math.min(percentage, 100)}%`;
+            tokenUsageText.textContent = `${usedTokens.toLocaleString()} / ${limit.toLocaleString()} tokens used`;
+            
+            // Update color based on usage
+            tokenMeterFill.classList.remove('warning', 'danger');
+            if (percentage > 90) {
+                tokenMeterFill.classList.add('danger');
+            } else if (percentage > 70) {
+                tokenMeterFill.classList.add('warning');
+            }
+        }
+        
         // Event listeners
         generateBtn.addEventListener('click', generateSummary);
+        
+        // Project management event listeners
+        projectDropdown.addEventListener('change', (e) => {
+            if (e.target.value) {
+                switchProject(e.target.value);
+            }
+        });
+        
+        changeProjectBtn.addEventListener('click', changeProjectDirectory);
+        settingsBtn.addEventListener('click', showSettingsModal);
+        settingsForm.addEventListener('submit', saveSettings);
+        
+        // Modal close on background click
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                closeSettingsModal();
+            }
+        });
+        
+        // New project form event listeners
+        newProjectForm.addEventListener('submit', createNewProject);
+        
+        // Modal close on background click
+        newProjectModal.addEventListener('click', (e) => {
+            if (e.target === newProjectModal) {
+                closeNewProjectModal();
+            }
+        });
         
         // Listen for progress updates from the main process
         window.electronAPI.onSummaryProgress((data) => {
@@ -378,6 +1047,31 @@
         // Load initial data
         window.addEventListener('DOMContentLoaded', () => {
             loadLatestFiles();
+            loadProjects();
+            loadCurrentProject();
+            
+            // Listen for project changes
+            window.electronAPI.project.onListChanged(() => {
+                loadProjects();
+            });
+            
+            window.electronAPI.project.onCurrentChanged((project) => {
+                currentProject = project;
+                updateProjectUI();
+                loadLatestFiles();
+            });
+            
+            window.electronAPI.project.onSettingsChanged((project) => {
+                if (currentProject && project.id === currentProject.id) {
+                    currentProject = project;
+                    updateProjectUI();
+                }
+            });
+            
+            window.electronAPI.settings.onGlobalChanged((settings) => {
+                globalSettings = settings;
+                updateSettingsForm();
+            });
         });
         
         // Keyboard shortcut

@@ -45,10 +45,20 @@ class GitCommitSummarizer:
         )
         
         # Set up directories
-        self.base_dir = Path(__file__).parent.parent
+        # Use PROJECT_PATH from environment if available, otherwise use cwd
+        project_path = os.getenv("PROJECT_PATH")
+        if project_path:
+            self.base_dir = Path(project_path)
+        else:
+            self.base_dir = Path.cwd()
+        
+        # Output directories should be relative to project
         self.output_dir = self.base_dir / "brainlifts"
         self.context_dir = self.base_dir / "context_logs"
-        self.prompts_dir = self.base_dir / "prompts"
+        
+        # Prompts are still relative to the script location
+        script_dir = Path(__file__).parent.parent
+        self.prompts_dir = script_dir / "prompts"
         
         # Ensure output directories exist
         self.output_dir.mkdir(exist_ok=True)
