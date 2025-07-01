@@ -374,6 +374,26 @@ ipcMain.handle('project:create', async (event, projectPath, name) => {
   try {
     const result = await projectManager.createProject(projectPath, name);
     if (result.success) {
+      // Apply git integration settings to the new project
+      const globalSettings = await projectManager.getGlobalSettings();
+      if (globalSettings.includeInGit !== undefined) {
+        updateGitignore(projectPath, globalSettings.includeInGit);
+      }
+      
+      // Create cursor rules if enabled
+      if (globalSettings.cursorRulesEnabled) {
+        const rulesResult = await projectManager.manageCursorRules(
+          result.project.id,
+          true,
+          globalSettings.cursorRulesType || 'always'
+        );
+        if (!rulesResult.success) {
+          logToFile(`Error creating cursor rules for new project: ${rulesResult.error}`);
+        } else {
+          logToFile(`Created cursor rules for new project: ${result.project.name}`);
+        }
+      }
+      
       // Notify renderer of project list change
       mainWindow.webContents.send('project:list-changed');
     }
@@ -391,6 +411,26 @@ ipcMain.handle('project:switch', async (event, projectId) => {
   try {
     const result = await projectManager.switchProject(projectId);
     if (result.success) {
+      // Apply git integration settings to the new project
+      const globalSettings = await projectManager.getGlobalSettings();
+      if (globalSettings.includeInGit !== undefined) {
+        updateGitignore(result.project.path, globalSettings.includeInGit);
+      }
+      
+      // Manage cursor rules for the new project
+      if (globalSettings.cursorRulesEnabled !== undefined) {
+        const rulesResult = await projectManager.manageCursorRules(
+          projectId,
+          globalSettings.cursorRulesEnabled,
+          globalSettings.cursorRulesType || 'always'
+        );
+        if (!rulesResult.success) {
+          logToFile(`Error managing cursor rules when switching project: ${rulesResult.error}`);
+        } else {
+          logToFile(`Managed cursor rules for project: ${result.project.name}`);
+        }
+      }
+      
       // Notify renderer of current project change
       mainWindow.webContents.send('project:current-changed', result.project);
     }
@@ -486,8 +526,39 @@ ipcMain.handle('settings:get-global', async () => {
 
 ipcMain.handle('settings:update-global', async (event, settings) => {
   try {
+    // Check if includeInGit setting changed
+    const currentSettings = await projectManager.getGlobalSettings();
+    const includeInGitChanged = currentSettings.includeInGit !== settings.includeInGit;
+    const cursorRulesChanged = currentSettings.cursorRulesEnabled !== settings.cursorRulesEnabled ||
+                               currentSettings.cursorRulesType !== settings.cursorRulesType;
+    
     const result = await projectManager.updateGlobalSettings(settings);
     if (result.success) {
+      // Update gitignore if includeInGit setting changed
+      if (includeInGitChanged) {
+        const currentProject = projectManager.getCurrentProject();
+        if (currentProject) {
+          updateGitignore(currentProject.path, settings.includeInGit);
+        }
+      }
+      
+      // Manage cursor rules if settings changed
+      if (cursorRulesChanged) {
+        const currentProject = projectManager.getCurrentProject();
+        if (currentProject) {
+          const rulesResult = await projectManager.manageCursorRules(
+            currentProject.id,
+            settings.cursorRulesEnabled,
+            settings.cursorRulesType
+          );
+          if (!rulesResult.success) {
+            logToFile(`Error managing cursor rules: ${rulesResult.error}`);
+          } else {
+            logToFile(rulesResult.message);
+          }
+        }
+      }
+      
       // Notify renderer of settings change
       mainWindow.webContents.send('settings:global-changed', result.settings);
     }
@@ -559,6 +630,45 @@ async function getLatestFile(dirPath) {
   } catch (error) {
     logToFile(`Error reading directory ${dirPath}: ${error.message}`);
     return null;
+  }
+}
+
+// Update gitignore based on includeInGit setting
+function updateGitignore(projectPath, includeInGit) {
+  try {
+    const gitignorePath = path.join(projectPath, '.gitignore');
+    const patternsToManage = ['brainlifts/', 'context_logs/', 'error_logs/'];
+    
+    // Read existing .gitignore
+    let gitignoreContent = '';
+    if (fs.existsSync(gitignorePath)) {
+      gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+    }
+    
+    // Split into lines and trim
+    let lines = gitignoreContent.split('\n').map(line => line.trim());
+    
+    if (includeInGit) {
+      // Remove these patterns from .gitignore
+      lines = lines.filter(line => !patternsToManage.includes(line));
+      logToFile(`Removed brainlift directories from .gitignore to include in git`);
+    } else {
+      // Add these patterns to .gitignore if not already present
+      for (const pattern of patternsToManage) {
+        if (!lines.includes(pattern)) {
+          lines.push(pattern);
+        }
+      }
+      logToFile(`Added brainlift directories to .gitignore to exclude from git`);
+    }
+    
+    // Write back to .gitignore
+    const newContent = lines.filter(line => line !== '').join('\n') + '\n';
+    fs.writeFileSync(gitignorePath, newContent);
+    
+    logToFile(`Updated .gitignore in ${projectPath} - includeInGit: ${includeInGit}`);
+  } catch (error) {
+    logToFile(`Error updating .gitignore: ${error.message}`);
   }
 }
 

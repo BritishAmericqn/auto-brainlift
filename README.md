@@ -13,19 +13,25 @@ Auto-Brainlift now includes intelligent caching to reduce API costs by up to 10x
 
 See [PHASE2_CACHING_GUIDE.md](PHASE2_CACHING_GUIDE.md) for full details.
 
-## Features
+## ✨ Features
 
-- 🔄 **Automatic Generation**: Summaries created automatically after each Git commit
-- 🎯 **Dual Output**: Technical context for AI + personal reflections for developers
-- 🖥️ **Desktop App**: Clean Electron UI for manual generation and viewing
-- 🔁 **Retry Logic**: Automatic retry with exponential backoff for failed generations
-- 🏃 **Background Processing**: Git commits complete immediately, summaries generate async
-- 🎨 **Clean UI**: Skeleton loaders, micro-interactions, and modern design
-- 🚀 **Smart Caching**: Multi-tier caching reduces API costs by up to 10x
-- 💰 **Budget Management**: Per-commit token limits with usage tracking
+- 🚀 **Automatic Documentation**: Generates context and reflection files after each commit
+- 🧠 **Multi-Agent Analysis**: Security, quality, and documentation agents review your code
+- 💾 **Smart Caching**: 3-tier caching system reduces API costs by ~65%
+- 💰 **Budget Management**: Set token limits and track costs per commit
+- 📊 **Beautiful UI**: Electron-based interface with real-time updates
+- 🔍 **Git Integration**: Seamlessly hooks into your Git workflow
+- 💬 **Cursor Chat Integration**: Optionally analyze development context from Cursor chats (Beta)
+- 📋 **Cursor Rules Integration**: Auto-create rules files for AI-aware assistance (New!)
+- 🌐 **MCP Integration**: Use Auto-Brainlift directly in Claude Desktop
+- 🤖 **Multi-Agent System**: Parallel analysis by specialized agents
+- 🎯 **Flexible Agent Execution**: Sequential, parallel, or priority-based processing
+- 📝 **Error Tracking**: Comprehensive error_log.md with categorized issues
+- 🚦 **Retry Mechanisms**: Automatic retry with exponential backoff
+- 💻 **Cross-Platform**: Windows, macOS, and Linux support
+- 🔄 **Project Management**: Handle multiple projects with isolated settings
 - 📊 **Analytics Dashboard**: Real-time cache performance and cost metrics
 - 🔐 **Project Isolation**: Complete data separation between projects
-- 💬 **Cursor Chat Integration**: Optionally analyze development context from Cursor chats (Beta)
 
 ## Quick Start
 
@@ -166,6 +172,9 @@ CURSOR_CHAT_ENABLED=false
 CURSOR_CHAT_PATH=  # Leave empty for auto-detection
 CURSOR_CHAT_MODE=light  # Options: light (default), full
 CURSOR_CHAT_INCLUDE_IN_SUMMARY=true  # Set to false to save tokens
+
+# Git Integration (managed via UI settings)
+# Use the Settings modal to control whether generated files are tracked by Git
 ```
 
 ### Customizing Prompts
@@ -186,6 +195,7 @@ parse_git_diff → summarize_context → summarize_brainlift → write_output
 - **AI**: OpenAI GPT-4
 - **Process Management**: Node.js child_process
 - **Version Control**: GitPython
+- **IDE Integration**: Cursor Rules (.mdc format) for AI context awareness
 
 ## Troubleshooting
 
@@ -257,6 +267,12 @@ node mcp-integration/mcp-server.js
 ```
 
 See [mcp-integration/README.md](mcp-integration/README.md) for setup instructions.
+
+### Cursor Rules Integration
+
+Auto-Brainlift can automatically create Cursor rules files that instruct AI assistants to read your project's context logs and brainlifts. This gives AI deep understanding of your project's history and decisions.
+
+Enable in Settings > Cursor Rules Integration. See [CURSOR_RULES_INTEGRATION.md](CURSOR_RULES_INTEGRATION.md) for details.
 
 ### Cursor Chat Integration
 Analyze your development conversations to provide richer context in summaries:

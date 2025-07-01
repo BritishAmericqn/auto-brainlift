@@ -6,12 +6,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
 node_modules
 dist
 dist-ssr
 *.local
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,7 +20,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
+# Cursor IDE
+.cursor/
 # Python
 venv/
 __pycache__/
@@ -30,14 +29,12 @@ __pycache__/
 .env
 *.egg-info/
 .pytest_cache/
-
 # Auto-Brainlift
 .processed_commits
 .retry_queue.json
 brainlifts/
 context_logs/
 error_logs/
-
 # Build artifacts
 build/
 dist/
@@ -48,7 +45,6 @@ dist/
 *.deb
 *.rpm
 *.blockmap
-
 # Temporary files
 python_wrapper.py
 run_agent.sh

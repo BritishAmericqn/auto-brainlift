@@ -737,6 +737,28 @@
             margin: 0;
         }
         
+        .modal-content h3 {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            margin-top: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            color: var(--foam-100);
+            letter-spacing: -0.01em;
+            position: relative;
+            padding-bottom: var(--spacing-sm);
+        }
+        
+        .modal-content h3::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: var(--gradient-ocean);
+            border-radius: 1px;
+        }
+        
         .close-button {
             background: rgba(42, 46, 52, 0.5);
             border: 1px solid transparent;
@@ -807,6 +829,11 @@
             margin-top: var(--spacing-xs);
         }
         
+        .button-group {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+        
         .toggle-switch {
             display: flex;
             align-items: center;
@@ -848,6 +875,53 @@
         .toggle-switch input[type="checkbox"]:checked::before {
             transform: translateX(20px);
             box-shadow: 0 2px 8px rgba(92, 211, 255, 0.3);
+        }
+        
+        /* Agent model selector styles */
+        .agent-model-selector {
+            margin-top: var(--spacing-sm);
+        }
+        
+        .agent-model-dropdown {
+            width: 200px;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background-color: rgba(42, 46, 52, 0.5);
+            font-size: var(--font-size-sm);
+            color: var(--color-text);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        .agent-model-dropdown:hover {
+            border-color: var(--ocean-500);
+            background-color: rgba(45, 74, 124, 0.2);
+            box-shadow: 0 0 15px rgba(45, 74, 124, 0.2);
+        }
+        
+        .agent-model-dropdown:focus {
+            outline: none;
+            border-color: var(--ocean-400);
+            box-shadow: 0 0 0 3px rgba(45, 74, 124, 0.2);
+        }
+        
+        /* Path input group */
+        .path-input-group {
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: stretch;
+        }
+        
+        .path-input-group input {
+            flex: 1;
+        }
+        
+        .path-input-group .button-secondary {
+            padding: var(--spacing-sm) var(--spacing-md);
+            white-space: nowrap;
         }
         
         /* Token meter */
@@ -977,6 +1051,10 @@
             text-shadow: 0 0 10px rgba(92, 211, 255, 0.3);
         }
         
+        .clear-cache-btn {
+            margin-top: var(--spacing-md);
+        }
+        
         .cost-preview {
             margin-top: var(--spacing-md);
             padding: var(--spacing-md);
@@ -1079,7 +1157,7 @@
                         <span class="stat-value" id="cacheAvgLatency">--</span>
                     </div>
                 </div>
-                <button id="clearCacheBtn" class="button-secondary" style="margin-top: 16px;">
+                <button id="clearCacheBtn" class="button-secondary clear-cache-btn">
                     <span>🗑️ Clear Cache</span>
                 </button>
             </div>
@@ -1197,7 +1275,7 @@
                     <div class="help-text" id="tokenUsageText">0 / 10,000 tokens used</div>
                 </div>
                 
-                <h3 style="margin-top: 30px; margin-bottom: 20px;">Multi-Agent Configuration</h3>
+                <h3>Multi-Agent Configuration</h3>
                 
                 <div class="form-group">
                     <label>Execution Mode</label>
@@ -1215,8 +1293,8 @@
                         <input type="checkbox" id="securityAgentEnabled" name="securityAgentEnabled" checked>
                         <label for="securityAgentEnabled">Enable security vulnerability scanning</label>
                     </div>
-                    <div style="margin-top: 10px;">
-                        <select id="securityAgentModel" name="securityAgentModel" style="width: 200px;">
+                    <div class="agent-model-selector">
+                        <select id="securityAgentModel" name="securityAgentModel" class="agent-model-dropdown">
                             <option value="gpt-4-turbo">GPT-4 Turbo ($0.01/1k)</option>
                             <option value="gpt-3.5-turbo">GPT-3.5 Turbo ($0.0015/1k)</option>
                         </select>
@@ -1229,8 +1307,8 @@
                         <input type="checkbox" id="qualityAgentEnabled" name="qualityAgentEnabled" checked>
                         <label for="qualityAgentEnabled">Enable code quality analysis</label>
                     </div>
-                    <div style="margin-top: 10px;">
-                        <select id="qualityAgentModel" name="qualityAgentModel" style="width: 200px;">
+                    <div class="agent-model-selector">
+                        <select id="qualityAgentModel" name="qualityAgentModel" class="agent-model-dropdown">
                             <option value="gpt-4-turbo">GPT-4 Turbo ($0.01/1k)</option>
                             <option value="gpt-3.5-turbo">GPT-3.5 Turbo ($0.0015/1k)</option>
                         </select>
@@ -1243,8 +1321,8 @@
                         <input type="checkbox" id="documentationAgentEnabled" name="documentationAgentEnabled" checked>
                         <label for="documentationAgentEnabled">Enable documentation generation</label>
                     </div>
-                    <div style="margin-top: 10px;">
-                        <select id="documentationAgentModel" name="documentationAgentModel" style="width: 200px;">
+                    <div class="agent-model-selector">
+                        <select id="documentationAgentModel" name="documentationAgentModel" class="agent-model-dropdown">
                             <option value="gpt-4-turbo">GPT-4 Turbo ($0.01/1k)</option>
                             <option value="gpt-3.5-turbo">GPT-3.5 Turbo ($0.0015/1k)</option>
                         </select>
@@ -1253,11 +1331,26 @@
                 
                 <div class="form-group">
                     <label>Agent Cost Preview</label>
-                    <div id="agentCostPreview" style="padding: 10px; background: #f0f0f0; border-radius: 4px;">
-                        <div>Estimated cost per commit: <strong id="agentEstimatedCost">$0.00</strong></div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                    <div id="agentCostPreview" class="cost-preview">
+                        <div class="preview-label">Estimated cost per commit:</div>
+                        <div class="preview-value" id="agentEstimatedCost">$0.00</div>
+                        <div class="help-text">
                             Based on average 1000 tokens per agent
                         </div>
+                    </div>
+                </div>
+                
+                <h3>Git Integration</h3>
+                
+                <div class="form-group">
+                    <label>Include Generated Files in Git</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="includeInGit" name="includeInGit">
+                        <label for="includeInGit">Include brainlift and context files in git commits</label>
+                    </div>
+                    <div class="help-text">
+                        When enabled, generated files will be tracked by git and included when you push.
+                        When disabled, these files remain in .gitignore and won't be committed.
                     </div>
                 </div>
                 
@@ -1276,9 +1369,11 @@
                 
                 <div class="form-group">
                     <label for="cursorChatPath">Cursor Data Path (Optional)</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="cursorChatPath" name="cursorChatPath" placeholder="Auto-detect based on OS" style="flex: 1;">
-                        <button type="button" id="browseCursorPath" class="button-secondary" style="padding: 8px 16px;">Browse</button>
+                    <div class="path-input-group">
+                        <input type="text" id="cursorChatPath" name="cursorChatPath" placeholder="Auto-detect based on OS">
+                        <button type="button" id="browseCursorPath" class="button-secondary">
+                            <span>📁 Browse</span>
+                        </button>
                     </div>
                     <div class="help-text">
                         Leave empty to auto-detect. Common locations:<br>
@@ -1311,6 +1406,34 @@
                     </div>
                 </div>
                 
+                <h3>Cursor Rules Integration</h3>
+                
+                <div class="form-group">
+                    <label>Enable Cursor Rules</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="cursorRulesEnabled" name="cursorRulesEnabled">
+                        <label for="cursorRulesEnabled">Create project-specific Cursor rules file</label>
+                    </div>
+                    <div class="help-text">
+                        Creates a .cursor/rules/auto-brainlift.mdc file that instructs AI assistants
+                        to read your context logs and brainlifts when helping with this project.
+                        When disabled, the rules file will be removed.
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cursorRulesType">Rule Type</label>
+                    <select id="cursorRulesType" name="cursorRulesType">
+                        <option value="always">Always - Applied to every AI interaction</option>
+                        <option value="auto">Auto Attached - Applied when working on project files</option>
+                        <option value="manual">Manual - Must be explicitly referenced</option>
+                    </select>
+                    <div class="help-text">
+                        Choose when the AI should apply these rules. "Always" is recommended
+                        for consistent assistance across your project.
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <button type="submit" class="button">Save Settings</button>
                 </div>
@@ -1339,8 +1462,10 @@
                 </div>
                 
                 <div class="form-group">
-                    <button type="submit" class="button">Add Project</button>
-                    <button type="button" class="button-secondary" onclick="closeNewProjectModal()" style="margin-left: 10px;">Cancel</button>
+                    <div class="button-group">
+                        <button type="submit" class="button">Add Project</button>
+                        <button type="button" class="button-secondary" onclick="closeNewProjectModal()">Cancel</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -1740,6 +1865,16 @@
             document.getElementById('cursorChatIncludeInSummary').checked = 
                 globalSettings.cursorChatIncludeInSummary !== false;
                 
+            // Git integration settings
+            document.getElementById('includeInGit').checked = 
+                globalSettings.includeInGit || false;
+                
+            // Cursor rules settings
+            document.getElementById('cursorRulesEnabled').checked = 
+                globalSettings.cursorRulesEnabled || false;
+            document.getElementById('cursorRulesType').value = 
+                globalSettings.cursorRulesType || 'always';
+                
             // Update cost preview
             updateAgentCostPreview();
         }
@@ -1781,7 +1916,12 @@
                 cursorChatEnabled: document.getElementById('cursorChatEnabled').checked,
                 cursorChatPath: document.getElementById('cursorChatPath').value,
                 cursorChatMode: document.getElementById('cursorChatMode').value,
-                cursorChatIncludeInSummary: document.getElementById('cursorChatIncludeInSummary').checked
+                cursorChatIncludeInSummary: document.getElementById('cursorChatIncludeInSummary').checked,
+                // Git integration settings
+                includeInGit: document.getElementById('includeInGit').checked,
+                // Cursor rules settings
+                cursorRulesEnabled: document.getElementById('cursorRulesEnabled').checked,
+                cursorRulesType: document.getElementById('cursorRulesType').value
             };
             
             try {

@@ -1,3 +1,27 @@
+# Auto-Brainlift v1.0.1
+
+🎨 **UI Updates Release**
+
+Minor improvements and bug fixes to the user interface.
+
+## 🔄 Changes
+
+- **UI Improvements**: Updated user interface for better user experience
+- **Bug Fixes**: Various minor fixes and improvements
+
+## 📦 Installation
+
+### macOS
+1. Download `Auto-Brainlift-1.0.1-arm64.dmg`
+2. Double-click to mount
+3. Drag Auto-Brainlift to Applications
+4. First run: Right-click → Open (bypasses security warning)
+
+### Updating from v1.0.0
+Simply download and install the new version - it will replace the old one.
+
+---
+
 # Auto-Brainlift v1.0.0
 
 🎉 **First Release!**

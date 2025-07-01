@@ -275,6 +275,133 @@ class ProjectManager {
     
     fs.appendFileSync(logFile, logMessage);
   }
+
+  // Manage Cursor Rules for project
+  async manageCursorRules(projectId, enabled, ruleType = 'always') {
+    const project = this.projects[projectId];
+    if (!project) {
+      return {
+        success: false,
+        error: 'Project not found'
+      };
+    }
+
+    const cursorDir = path.join(project.path, '.cursor');
+    const rulesDir = path.join(cursorDir, 'rules');
+    const ruleFile = path.join(rulesDir, 'auto-brainlift.mdc');
+
+    try {
+      if (enabled) {
+        // Create directories if they don't exist
+        if (!fs.existsSync(cursorDir)) {
+          fs.mkdirSync(cursorDir, { recursive: true });
+        }
+        if (!fs.existsSync(rulesDir)) {
+          fs.mkdirSync(rulesDir, { recursive: true });
+        }
+
+        // Create the rule content
+        const ruleContent = this.generateCursorRuleContent(project.name, ruleType);
+        
+        // Write the rule file
+        fs.writeFileSync(ruleFile, ruleContent, 'utf8');
+        
+        this.logToProject(projectId, `Created Cursor rules file at ${ruleFile}`);
+        
+        return {
+          success: true,
+          message: 'Cursor rules file created successfully'
+        };
+      } else {
+        // Remove the rule file if it exists
+        if (fs.existsSync(ruleFile)) {
+          fs.unlinkSync(ruleFile);
+          this.logToProject(projectId, `Removed Cursor rules file at ${ruleFile}`);
+          
+          // Clean up empty directories
+          try {
+            if (fs.existsSync(rulesDir) && fs.readdirSync(rulesDir).length === 0) {
+              fs.rmdirSync(rulesDir);
+            }
+            if (fs.existsSync(cursorDir) && fs.readdirSync(cursorDir).length === 0) {
+              fs.rmdirSync(cursorDir);
+            }
+          } catch (e) {
+            // Ignore errors when cleaning up directories
+          }
+        }
+        
+        return {
+          success: true,
+          message: 'Cursor rules file removed successfully'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  generateCursorRuleContent(projectName, ruleType) {
+    const typeConfig = {
+      always: 'alwaysApply: true',
+      auto: 'globs: "**/*"',
+      manual: ''
+    };
+
+    return `---
+description: Auto-Brainlift Project Context for ${projectName}
+${typeConfig[ruleType] || typeConfig.always}
+---
+
+# Auto-Brainlift Project Assistant
+
+This project uses Auto-Brainlift for automatic documentation and reflection generation after each git commit.
+
+## When assisting with this codebase:
+
+1. **Check Context Logs**: Always review the latest context logs in \`/context_logs/\` to understand:
+   - Current project structure and architecture
+   - Recent commits and changes
+   - Technical debt and TODOs
+   - Multi-agent analysis results (security, quality, documentation)
+   - Active development areas
+
+2. **Check Brainlifts**: Review \`/brainlifts/\` for developer insights:
+   - Decision rationale and thought process
+   - Challenges faced and solutions implemented
+   - Future plans and considerations
+   - Personal reflections on the code
+
+3. **Latest Documentation**: The most recent files contain:
+   - \`context_logs/YYYY-MM-DD_HH-MM-SS_context.md\`: Technical project state
+   - \`brainlifts/YYYY-MM-DD_HH-MM-SS_brainlift.md\`: Developer reflections
+   - \`error_logs/YYYY-MM-DD_HH-MM-SS_error_log.md\`: Issues found by agents
+
+## Key Information Sources:
+
+- **Project Architecture**: Found in latest context.md under "Project Structure"
+- **Recent Changes**: Listed in context.md under "Recent Commits"
+- **Known Issues**: Documented in error_log.md with severity levels
+- **Development Context**: Cursor chat history analysis in brainlift.md
+
+## Best Practices:
+
+- Always consider the historical context before suggesting changes
+- Reference specific insights from the documentation when relevant
+- Understand the developer's thought process from brainlifts
+- Be aware of identified security, quality, and documentation issues
+
+## File Naming Convention:
+All Auto-Brainlift files follow the pattern: \`YYYY-MM-DD_HH-MM-SS_[type].md\`
+
+---
+
+Remember: These documents provide rich context about the project's evolution, decisions, and current state. Use them to provide more informed and contextual assistance.
+`;
+  }
 }
 
 module.exports = ProjectManager; 
