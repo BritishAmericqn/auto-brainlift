@@ -88,5 +88,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   file: {
     getHistory: (fileType) => ipcRenderer.invoke('get-file-history', fileType),
     getContent: (filePath) => ipcRenderer.invoke('get-file-content', filePath)
+  },
+
+  // Git API
+  git: {
+    status: () => ipcRenderer.invoke('git:status'),
+    generateCommitMessage: () => ipcRenderer.invoke('git:generate-commit-message'),
+    commit: (message) => ipcRenderer.invoke('git:commit', message),
+    push: () => ipcRenderer.invoke('git:push'),
+    pull: () => ipcRenderer.invoke('git:pull')
   }
 }); 

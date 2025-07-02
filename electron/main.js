@@ -601,6 +601,210 @@ ipcMain.handle('dialog:select-directory', async () => {
   }
 });
 
+// Git Integration IPC Handlers
+ipcMain.handle('git:status', async (event) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    // Check if directory is a git repository
+    const gitDir = path.join(currentProject.path, '.git');
+    if (!fs.existsSync(gitDir)) {
+      return { success: false, error: 'Not a git repository' };
+    }
+
+    const statusResult = await new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', ['status', '--porcelain'], {
+        cwd: currentProject.path
+      });
+      
+      let output = '';
+      gitProcess.stdout.on('data', (data) => output += data.toString());
+      gitProcess.on('close', (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Git status failed: ${code}`));
+      });
+      gitProcess.on('error', (err) => reject(err));
+    });
+
+    // Parse git status output
+    const files = statusResult.split('\n')
+      .filter(line => line.trim())
+      .map(line => ({
+        status: line.substring(0, 2),
+        path: line.substring(3)
+      }));
+
+    return {
+      success: true,
+      files: files,
+      hasChanges: files.length > 0,
+      staged: files.filter(f => f.status[0] !== ' ' && f.status[0] !== '?').length,
+      unstaged: files.filter(f => f.status[1] !== ' ').length
+    };
+  } catch (error) {
+    logToFile(`Git status error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git:generate-commit-message', async (event) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    // Get git diff for staged changes
+    const diffResult = await new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', ['diff', '--cached'], {
+        cwd: currentProject.path
+      });
+      
+      let output = '';
+      gitProcess.stdout.on('data', (data) => output += data.toString());
+      gitProcess.on('close', (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Git diff failed: ${code}`));
+      });
+      gitProcess.on('error', (err) => reject(err));
+    });
+
+    if (!diffResult.trim()) {
+      return { success: false, error: 'No staged changes found' };
+    }
+
+    // Use existing Python system to generate commit message
+    const globalSettings = await projectManager.getGlobalSettings();
+    
+    return new Promise((resolve) => {
+      const pythonPath = path.join(__dirname, '../venv/bin/python');
+      const scriptPath = path.join(__dirname, '../agents/commit_message_generator.py');
+      
+      const pythonProcess = spawn(pythonPath, [scriptPath], {
+        cwd: currentProject.path,
+        env: {
+          ...process.env,
+          OPENAI_API_KEY: globalSettings.apiKey || '',
+          GIT_DIFF: diffResult
+        }
+      });
+
+      let output = '';
+      let errorOutput = '';
+      pythonProcess.stdout.on('data', (data) => output += data.toString());
+      pythonProcess.stderr.on('data', (data) => errorOutput += data.toString());
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, message: output.trim() });
+        } else {
+          logToFile(`Commit message generation failed: ${errorOutput}`);
+          resolve({ success: false, error: 'Failed to generate commit message' });
+        }
+      });
+      pythonProcess.on('error', (err) => {
+        logToFile(`Failed to start commit message generator: ${err.message}`);
+        resolve({ success: false, error: `Failed to start Python process: ${err.message}` });
+      });
+    });
+  } catch (error) {
+    logToFile(`Error in git:generate-commit-message: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git:commit', async (event, message) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', ['commit', '-m', message], {
+        cwd: currentProject.path
+      });
+      
+      let output = '';
+      gitProcess.stdout.on('data', (data) => output += data.toString());
+      gitProcess.stderr.on('data', (data) => output += data.toString());
+      gitProcess.on('close', (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Git commit failed: ${output}`));
+      });
+      gitProcess.on('error', (err) => reject(err));
+    });
+
+    logToFile(`Git commit successful: ${message}`);
+    return { success: true, output: result };
+  } catch (error) {
+    logToFile(`Git commit error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git:push', async (event) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', ['push'], {
+        cwd: currentProject.path
+      });
+      
+      let output = '';
+      gitProcess.stdout.on('data', (data) => output += data.toString());
+      gitProcess.stderr.on('data', (data) => output += data.toString());
+      gitProcess.on('close', (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Git push failed: ${output}`));
+      });
+      gitProcess.on('error', (err) => reject(err));
+    });
+
+    logToFile(`Git push successful`);
+    return { success: true, output: result };
+  } catch (error) {
+    logToFile(`Git push error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git:pull', async (event) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', ['pull'], {
+        cwd: currentProject.path
+      });
+      
+      let output = '';
+      gitProcess.stdout.on('data', (data) => output += data.toString());
+      gitProcess.stderr.on('data', (data) => output += data.toString());
+      gitProcess.on('close', (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Git pull failed: ${output}`));
+      });
+      gitProcess.on('error', (err) => reject(err));
+    });
+
+    logToFile(`Git pull successful`);
+    return { success: true, output: result };
+  } catch (error) {
+    logToFile(`Git pull error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
 // Helper function to get the latest file from a directory
 async function getLatestFile(dirPath) {
   try {

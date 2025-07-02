@@ -622,6 +622,83 @@
         .button-secondary:active {
             transform: translateY(0);
         }
+
+        /* Git Controls Styling */
+        .controls-group {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            align-items: center;
+        }
+
+        .git-status {
+            background: rgba(42, 46, 52, 0.5);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-sm);
+            color: var(--foam-300);
+            min-width: 200px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .git-controls {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        #commitMessageContainer {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: rgba(42, 46, 52, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        #commitMessageText {
+            width: 100%;
+            min-height: 60px;
+            padding: var(--spacing-sm);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background: rgba(42, 46, 52, 0.5);
+            color: var(--color-text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--font-size-sm);
+            resize: vertical;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        #commitMessageText:focus {
+            outline: none;
+            border-color: var(--ocean-400);
+            background-color: rgba(45, 74, 124, 0.1);
+            box-shadow: 
+                0 0 0 3px rgba(45, 74, 124, 0.2),
+                0 0 20px rgba(45, 74, 124, 0.1);
+        }
+
+        .commit-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+        }
+
+        .button-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: rgba(42, 46, 52, 0.3);
+        }
+
+        .button-secondary:disabled:hover {
+            transform: none;
+            box-shadow: none;
+            background: rgba(42, 46, 52, 0.3);
+        }
         
         .project-status {
             display: flex;
@@ -1133,9 +1210,45 @@
         
         <section class="controls">
             <h2>Manual Generation</h2>
-            <button id="generateBtn" class="button">
-                <span>Generate Summary</span>
-            </button>
+            
+            <!-- Original generate button -->
+            <div class="controls-group">
+                <button id="generateBtn" class="button">
+                    <span>Generate Summary</span>
+                </button>
+                <button id="analyzeWipBtn" class="button-secondary">
+                    <span>📝 Analyze WIP</span>
+                </button>
+            </div>
+            
+            <!-- Git controls -->
+            <div class="controls-group">
+                <div class="git-status" id="gitStatus">
+                    <span class="status-text">Check git status...</span>
+                </div>
+                
+                <div class="git-controls">
+                    <button id="commitBtn" class="button-secondary" disabled>
+                        <span>📤 Commit</span>
+                    </button>
+                    <button id="pushBtn" class="button-secondary">
+                        <span>⬆️ Push</span>
+                    </button>
+                    <button id="pullBtn" class="button-secondary">
+                        <span>⬇️ Pull</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="commitMessageContainer" style="display: none;">
+                <textarea id="commitMessageText" placeholder="AI-generated commit message will appear here..."></textarea>
+                <div class="commit-actions">
+                    <button id="acceptCommitBtn" class="button">Accept & Commit</button>
+                    <button id="editCommitBtn" class="button-secondary">Edit Message</button>
+                    <button id="cancelCommitBtn" class="button-secondary">Cancel</button>
+                </div>
+            </div>
+            
             <div id="status" class="status"></div>
         </section>
         
@@ -1528,6 +1641,18 @@
         const totalCost = document.getElementById('totalCost');
         const costPreview = document.getElementById('costPreview');
         const costEstimate = document.getElementById('costEstimate');
+
+        // Git Controls
+        const commitBtn = document.getElementById('commitBtn');
+        const pushBtn = document.getElementById('pushBtn');
+        const pullBtn = document.getElementById('pullBtn');
+        const analyzeWipBtn = document.getElementById('analyzeWipBtn');
+        const gitStatus = document.getElementById('gitStatus');
+        const commitMessageContainer = document.getElementById('commitMessageContainer');
+        const commitMessageText = document.getElementById('commitMessageText');
+        const acceptCommitBtn = document.getElementById('acceptCommitBtn');
+        const editCommitBtn = document.getElementById('editCommitBtn');
+        const cancelCommitBtn = document.getElementById('cancelCommitBtn');
         
         // Show status message
         function showStatus(message, type = 'success') {
@@ -1717,6 +1842,106 @@
                 generateBtn.disabled = false;
                 generateBtn.textContent = 'Generate Summary';
             }
+        }
+
+        // Git Functions
+        async function updateGitStatus() {
+            try {
+                const result = await window.electronAPI.git.status();
+                if (result.success) {
+                    const statusText = result.hasChanges ? 
+                        `${result.staged} staged, ${result.unstaged} unstaged` : 
+                        'No changes';
+                    gitStatus.querySelector('.status-text').textContent = statusText;
+                    commitBtn.disabled = result.staged === 0;
+                } else {
+                    gitStatus.querySelector('.status-text').textContent = 'Not a git repo';
+                    commitBtn.disabled = true;
+                }
+            } catch (error) {
+                gitStatus.querySelector('.status-text').textContent = 'Git error';
+                commitBtn.disabled = true;
+            }
+        }
+
+        async function generateCommitMessage() {
+            try {
+                showStatus('Generating commit message...', 'info');
+                const result = await window.electronAPI.git.generateCommitMessage();
+                
+                if (result.success) {
+                    commitMessageText.value = result.message;
+                    commitMessageContainer.style.display = 'block';
+                    commitMessageText.focus();
+                    showStatus('Commit message generated', 'success');
+                } else {
+                    showStatus(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error generating commit message: ${error.message}`, 'error');
+            }
+        }
+
+        async function commitChanges() {
+            const message = commitMessageText.value.trim();
+            if (!message) {
+                showStatus('Please enter a commit message', 'error');
+                return;
+            }
+            
+            try {
+                showStatus('Committing changes...', 'info');
+                const result = await window.electronAPI.git.commit(message);
+                
+                if (result.success) {
+                    showStatus('Successfully committed changes', 'success');
+                    commitMessageContainer.style.display = 'none';
+                    commitMessageText.value = '';
+                    updateGitStatus();
+                } else {
+                    showStatus(`Commit failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error committing: ${error.message}`, 'error');
+            }
+        }
+
+        async function pushChanges() {
+            try {
+                showStatus('Pushing changes...', 'info');
+                const result = await window.electronAPI.git.push();
+                
+                if (result.success) {
+                    showStatus('Successfully pushed changes', 'success');
+                    updateGitStatus();
+                } else {
+                    showStatus(`Push failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error pushing: ${error.message}`, 'error');
+            }
+        }
+
+        async function pullChanges() {
+            try {
+                showStatus('Pulling changes...', 'info');
+                const result = await window.electronAPI.git.pull();
+                
+                if (result.success) {
+                    showStatus('Successfully pulled changes', 'success');
+                    updateGitStatus();
+                    loadLatestFiles(); // Refresh content in case files changed
+                } else {
+                    showStatus(`Pull failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error pulling: ${error.message}`, 'error');
+            }
+        }
+
+        function cancelCommitMessage() {
+            commitMessageContainer.style.display = 'none';
+            commitMessageText.value = '';
         }
         
         // Project Management Functions
@@ -2239,6 +2464,18 @@
             }
         });
         
+        // Git Control Event Listeners
+        commitBtn.addEventListener('click', generateCommitMessage);
+        pushBtn.addEventListener('click', pushChanges);
+        pullBtn.addEventListener('click', pullChanges);
+        analyzeWipBtn.addEventListener('click', generateSummary); // Same as generate button for now
+        acceptCommitBtn.addEventListener('click', commitChanges);
+        editCommitBtn.addEventListener('click', () => {
+            commitMessageText.focus();
+            commitMessageText.select();
+        });
+        cancelCommitBtn.addEventListener('click', cancelCommitMessage);
+        
         // Listen for progress updates from the main process
         window.electronAPI.onSummaryProgress((data) => {
             if (data.status === 'complete') {
@@ -2266,11 +2503,15 @@
             loadCacheStats();
             loadBudgetUsage();
             
+            // Initialize git status
+            updateGitStatus();
+            
             // Refresh data periodically
             setInterval(() => {
                 loadLatestFiles();
                 refreshCacheStats();
                 loadBudgetUsage();
+                updateGitStatus(); // Update git status every 30 seconds
             }, 30000);  // Every 30 seconds
             
             // Listen for project changes
