@@ -96,6 +96,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Git API
   git: {
     status: () => ipcRenderer.invoke('git:status'),
+    add: (files) => ipcRenderer.invoke('git:add', files),
     generateCommitMessage: () => ipcRenderer.invoke('git:generate-commit-message'),
     commit: (message) => ipcRenderer.invoke('git:commit', message),
     push: () => ipcRenderer.invoke('git:push'),

@@ -282,43 +282,6 @@
             filter: grayscale(0.5);
         }
         
-        /* Status message - Glass morphism style */
-        .status {
-            margin-top: var(--spacing-md);
-            padding: var(--spacing-sm) var(--spacing-md);
-            border-radius: 8px;
-            font-size: var(--font-size-sm);
-            transition: all var(--transition-base);
-            opacity: 0;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-        
-        .status.show {
-            opacity: 1;
-        }
-        
-        .status.success {
-            background-color: rgba(42, 78, 76, 0.2);
-            color: var(--foam-100);
-            border: 1px solid rgba(42, 78, 76, 0.3);
-            box-shadow: 0 0 20px rgba(42, 78, 76, 0.2);
-        }
-        
-        .status.error {
-            background-color: rgba(92, 42, 58, 0.2);
-            color: var(--foam-100);
-            border: 1px solid rgba(92, 42, 58, 0.3);
-            box-shadow: 0 0 20px rgba(92, 42, 58, 0.2);
-        }
-        
-        .status.warning {
-            background-color: rgba(92, 78, 42, 0.2);
-            color: var(--foam-100);
-            border: 1px solid rgba(92, 78, 42, 0.3);
-            box-shadow: 0 0 20px rgba(92, 78, 42, 0.2);
-        }
-        
         /* Output section */
         .output-section {
             display: grid;
@@ -634,21 +597,206 @@
             align-items: center;
         }
 
-        .git-status {
-            background: rgba(42, 46, 52, 0.5);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            padding: var(--spacing-sm) var(--spacing-md);
-            font-size: var(--font-size-sm);
-            color: var(--foam-300);
-            min-width: 200px;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-        }
-
         .git-controls {
             display: flex;
             gap: var(--spacing-sm);
+        }
+
+        /* Split controls layout */
+        .split-controls {
+            display: flex;
+            gap: var(--spacing-xl);
+            align-items: flex-start;
+            position: relative;
+            flex-wrap: wrap;
+        }
+
+        .controls-section {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .git-section {
+            position: relative;
+        }
+
+        .controls-divider {
+            width: 1px;
+            background: var(--color-border);
+            align-self: stretch;
+            opacity: 0.5;
+        }
+
+        /* Git status with refresh button */
+        .git-status-container {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-lg);
+            width: 100%;
+            position: relative;
+            background: rgba(26, 29, 33, 0.5);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: var(--spacing-xs);
+        }
+
+        .git-status {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            padding: var(--spacing-xs) var(--spacing-md);
+            font-size: var(--font-size-sm);
+            color: var(--foam-200);
+            text-align: center;
+            min-height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text {
+            display: inline-block;
+        }
+
+        .button-icon {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            color: var(--foam-300);
+            font-size: 16px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
+
+        .button-icon:hover {
+            background: rgba(45, 74, 124, 0.1);
+            border-color: var(--ocean-500);
+            transform: rotate(180deg);
+        }
+
+        /* File staging controls */
+        .staging-controls {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        /* File selection dropdown */
+        .file-selection-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-list-dropdown {
+            min-width: 300px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-bottom: 1px solid var(--color-border);
+            background: rgba(26, 29, 33, 0.5);
+        }
+
+        .button-small {
+            background: var(--gradient-ocean);
+            color: var(--foam-100);
+            border: none;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-sm);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+
+        .button-small:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(45, 74, 124, 0.3);
+        }
+
+        .file-list-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-sm);
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background var(--transition-base);
+        }
+
+        .file-item:hover {
+            background: rgba(45, 74, 124, 0.1);
+        }
+
+        .file-checkbox {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--ocean-400);
+        }
+
+        .file-status {
+            font-size: var(--font-size-sm);
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--foam-400);
+            width: 20px;
+            text-align: center;
+        }
+
+        .file-status.added { color: var(--ocean-300); }
+        .file-status.modified { color: var(--foam-200); }
+        .file-status.deleted { color: #ff6b6b; }
+        .file-status.untracked { color: var(--foam-500); }
+
+        .file-path {
+            flex: 1;
+            font-size: var(--font-size-sm);
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--foam-300);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Commit message container adjustments */
+        #commitMessageContainer {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: var(--spacing-lg);
+            width: 100%;
+            background: rgba(26, 29, 33, 0.95);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: var(--spacing-lg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 500;
         }
 
         /* WIP Analysis Dropdown */
@@ -1313,6 +1461,52 @@
             resize: vertical;
             overflow-y: auto;
         }
+
+        .status {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(42, 46, 52, 0.95);
+            color: var(--color-text);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: 8px;
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-base);
+            z-index: 1000;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--color-border);
+            box-shadow: 0 4px 20px rgba(12, 25, 41, 0.6);
+            max-width: 90%;
+            text-align: center;
+        }
+        
+        .status.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .status.success {
+            background: rgba(34, 139, 34, 0.2);
+            border-color: rgba(34, 139, 34, 0.5);
+            color: #90EE90;
+        }
+        
+        .status.error {
+            background: rgba(220, 20, 60, 0.2);
+            border-color: rgba(220, 20, 60, 0.5);
+            color: #FFB6C1;
+        }
+        
+        .status.info {
+            background: rgba(45, 74, 124, 0.2);
+            border-color: rgba(45, 74, 124, 0.5);
+            color: var(--foam-200);
+        }
     </style>
 </head>
 <body>
@@ -1351,38 +1545,65 @@
             </div>
         </section>
         
-        <section class="controls">
-            <h2>Manual Generation</h2>
-            
-            <!-- Original generate button -->
-            <div class="controls-group">
-                <button id="generateBtn" class="button">
-                    <span>Generate Summary</span>
-                </button>
-                <div class="wip-analysis-dropdown">
-                    <button id="analyzeWipBtn" class="button dropdown-toggle">
-                        <span>📝 Analyze WIP</span>
-                        <span class="dropdown-arrow">▼</span>
+        <section class="controls split-controls">
+            <!-- Left side - Summary Generation -->
+            <div class="controls-section generation-section">
+                <h2>Summary Generation</h2>
+                
+                <div class="controls-group">
+                    <button id="generateBtn" class="button">
+                        <span>Generate Summary</span>
                     </button>
-                    <div class="dropdown-menu" id="wipDropdownMenu">
-                        <div class="dropdown-item" data-mode="all">
-                            <span>📄 All Changes</span>
-                            <small>All modified files (staged + unstaged)</small>
-                        </div>
-                        <div class="dropdown-item" data-mode="staged">
-                            <span>📋 Staged Changes</span>
-                            <small>Only files staged for commit</small>
+                    <div class="wip-analysis-dropdown">
+                        <button id="analyzeWipBtn" class="button dropdown-toggle">
+                            <span>📝 Analyze WIP</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu" id="wipDropdownMenu">
+                            <div class="dropdown-item" data-mode="all">
+                                <span>📄 All Changes</span>
+                                <small>All modified files (staged + unstaged)</small>
+                            </div>
+                            <div class="dropdown-item" data-mode="staged">
+                                <span>📋 Staged Changes</span>
+                                <small>Only files staged for commit</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Git controls -->
-            <div class="controls-group">
-                <div class="git-status" id="gitStatus">
-                    <span class="status-text">Check git status...</span>
+            <!-- Divider -->
+            <div class="controls-divider"></div>
+            
+            <!-- Right side - Git Tools -->
+            <div class="controls-section git-section">
+                <h2>Git Tools</h2>
+                
+                <!-- File staging controls -->
+                <div class="staging-controls">
+                    <button id="stageAllBtn" class="button-secondary">
+                        <span>📦 Stage All</span>
+                    </button>
+                    
+                    <div class="file-selection-dropdown">
+                        <button id="selectFilesBtn" class="button-secondary dropdown-toggle">
+                            <span>📁 Select Files</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu file-list-dropdown" id="fileListDropdown">
+                            <div class="file-list-header">
+                                <span>Select files to stage:</span>
+                                <button id="stageSelectedBtn" class="button-small">Stage Selected</button>
+                            </div>
+                            <div class="file-list-content" id="fileListContent">
+                                <!-- Files will be populated here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
+                <!-- Git action buttons -->
                 <div class="git-controls">
                     <button id="commitBtn" class="button-secondary" disabled>
                         <span>📤 Commit</span>
@@ -1394,8 +1615,19 @@
                         <span>⬇️ Pull</span>
                     </button>
                 </div>
+                
+                <!-- Git status with refresh -->
+                <div class="git-status-container">
+                    <div class="git-status" id="gitStatus">
+                        <span class="status-text">Checking git status...</span>
+                    </div>
+                    <button id="refreshStatusBtn" class="button-icon" title="Refresh status">
+                        <span>🔄</span>
+                    </button>
+                </div>
             </div>
             
+            <!-- Commit message container spans both sections -->
             <div id="commitMessageContainer" style="display: none;">
                 <textarea id="commitMessageText" placeholder="AI-generated commit message will appear here..."></textarea>
                 <div class="commit-actions">
@@ -1404,8 +1636,6 @@
                     <button id="cancelCommitBtn" class="button-secondary">Cancel</button>
                 </div>
             </div>
-            
-            <div id="status" class="status"></div>
         </section>
         
         <!-- Cache & Budget Stats -->
@@ -1500,6 +1730,9 @@
             </div>
         </section>
     </div>
+    
+    <!-- Status message toast -->
+    <div id="status" class="status"></div>
     
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
@@ -1900,6 +2133,17 @@
         const editCommitBtn = document.getElementById('editCommitBtn');
         const cancelCommitBtn = document.getElementById('cancelCommitBtn');
         
+        // New Git staging controls
+        const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+        const stageAllBtn = document.getElementById('stageAllBtn');
+        const selectFilesBtn = document.getElementById('selectFilesBtn');
+        const fileListDropdown = document.getElementById('fileListDropdown');
+        const fileListContent = document.getElementById('fileListContent');
+        const stageSelectedBtn = document.getElementById('stageSelectedBtn');
+        
+        // Track current git files
+        let currentGitFiles = [];
+        
         // Show status message
         function showStatus(message, type = 'success') {
             statusEl.textContent = message;
@@ -2100,13 +2344,119 @@
                         'No changes';
                     gitStatus.querySelector('.status-text').textContent = statusText;
                     commitBtn.disabled = result.staged === 0;
+                    
+                    // Store the file list for the dropdown
+                    currentGitFiles = result.files || [];
+                    updateFileList();
                 } else {
                     gitStatus.querySelector('.status-text').textContent = 'Not a git repo';
                     commitBtn.disabled = true;
+                    currentGitFiles = [];
                 }
             } catch (error) {
                 gitStatus.querySelector('.status-text').textContent = 'Git error';
                 commitBtn.disabled = true;
+                currentGitFiles = [];
+            }
+        }
+
+        // Update the file list dropdown
+        function updateFileList() {
+            fileListContent.innerHTML = '';
+            
+            if (currentGitFiles.length === 0) {
+                fileListContent.innerHTML = '<div class="empty-state">No changes to stage</div>';
+                return;
+            }
+            
+            currentGitFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'file-checkbox';
+                checkbox.id = `file-${index}`;
+                checkbox.dataset.path = file.path;
+                
+                // Check if file is already staged
+                if (file.status[0] !== ' ' && file.status[0] !== '?') {
+                    checkbox.checked = true;
+                    checkbox.disabled = true;
+                }
+                
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'file-status';
+                statusSpan.textContent = file.status.trim();
+                
+                // Add status class based on git status
+                if (file.status[1] === 'M' || file.status[0] === 'M') statusSpan.classList.add('modified');
+                else if (file.status[0] === 'A') statusSpan.classList.add('added');
+                else if (file.status[0] === 'D') statusSpan.classList.add('deleted');
+                else if (file.status[0] === '?') statusSpan.classList.add('untracked');
+                
+                const pathSpan = document.createElement('span');
+                pathSpan.className = 'file-path';
+                pathSpan.textContent = file.path;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `file-${index}`;
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = 'var(--spacing-sm)';
+                label.style.flex = '1';
+                label.style.cursor = checkbox.disabled ? 'default' : 'pointer';
+                
+                label.appendChild(statusSpan);
+                label.appendChild(pathSpan);
+                
+                fileItem.appendChild(checkbox);
+                fileItem.appendChild(label);
+                
+                fileListContent.appendChild(fileItem);
+            });
+        }
+
+        // Stage selected files
+        async function stageSelectedFiles() {
+            const checkboxes = fileListContent.querySelectorAll('.file-checkbox:not(:disabled):checked');
+            const filesToStage = Array.from(checkboxes).map(cb => cb.dataset.path);
+            
+            if (filesToStage.length === 0) {
+                showStatus('No files selected', 'error');
+                return;
+            }
+            
+            try {
+                showStatus(`Staging ${filesToStage.length} file(s)...`, 'info');
+                const result = await window.electronAPI.git.add(filesToStage);
+                
+                if (result.success) {
+                    showStatus(`Successfully staged ${filesToStage.length} file(s)`, 'success');
+                    await updateGitStatus();
+                    fileListDropdown.classList.remove('show');
+                } else {
+                    showStatus(`Staging failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error staging files: ${error.message}`, 'error');
+            }
+        }
+
+        // Stage all files
+        async function stageAllFiles() {
+            try {
+                showStatus('Staging all files...', 'info');
+                const result = await window.electronAPI.git.add(['.']);
+                
+                if (result.success) {
+                    showStatus('Successfully staged all files', 'success');
+                    await updateGitStatus();
+                } else {
+                    showStatus(`Staging failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error staging files: ${error.message}`, 'error');
             }
         }
 
@@ -2150,6 +2500,12 @@
             } catch (error) {
                 showStatus(`Error committing: ${error.message}`, 'error');
             }
+        }
+
+        function cancelCommitMessage() {
+            commitMessageContainer.style.display = 'none';
+            commitMessageText.value = '';
+            showStatus('Commit cancelled', 'info');
         }
 
         async function pushChanges() {
@@ -3029,6 +3385,37 @@
             commitMessageText.select();
         });
         cancelCommitBtn.addEventListener('click', cancelCommitMessage);
+        
+        // New staging control event listeners
+        refreshStatusBtn.addEventListener('click', () => {
+            updateGitStatus();
+        });
+        
+        stageAllBtn.addEventListener('click', stageAllFiles);
+        stageSelectedBtn.addEventListener('click', stageSelectedFiles);
+        
+        // File selection dropdown toggle
+        selectFilesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileListDropdown.classList.toggle('show');
+            
+            // Update file list when opening dropdown
+            if (fileListDropdown.classList.contains('show')) {
+                updateFileList();
+            }
+        });
+        
+        // Close file dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.file-selection-dropdown')) {
+                fileListDropdown.classList.remove('show');
+            }
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        fileListDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
         
         // Listen for progress updates from the main process
         window.electronAPI.onSummaryProgress((data) => {

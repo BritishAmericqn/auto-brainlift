@@ -984,6 +984,44 @@ ipcMain.handle('git:pull', async (event) => {
   }
 });
 
+ipcMain.handle('git:add', async (event, files = ['.']) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    // If files is empty or contains '.', stage all
+    const args = ['add'];
+    if (files.length === 0 || files.includes('.')) {
+      args.push('.');
+    } else {
+      args.push(...files);
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', args, {
+        cwd: currentProject.path
+      });
+      
+      let output = '';
+      gitProcess.stdout.on('data', (data) => output += data.toString());
+      gitProcess.stderr.on('data', (data) => output += data.toString());
+      gitProcess.on('close', (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Git add failed: ${output}`));
+      });
+      gitProcess.on('error', (err) => reject(err));
+    });
+
+    logToFile(`Git add successful: ${files.join(', ')}`);
+    return { success: true, output: result };
+  } catch (error) {
+    logToFile(`Git add error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
 // Style Guide Integration - Phase 2
 ipcMain.handle('style-guide:upload', async (event, filePath, options = {}) => {
   try {
