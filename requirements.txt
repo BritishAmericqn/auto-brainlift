@@ -15,4 +15,7 @@ pydantic==2.7.4
 typing-extensions==4.12.2
 
 # Cache dependencies
-numpy==1.26.4  # For semantic cache similarity calculations 
+numpy==1.26.4  # For semantic cache similarity calculations
+
+# Style guide parsing
+PyYAML==6.0.2  # For parsing YAML style guide files 

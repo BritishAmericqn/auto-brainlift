@@ -1,0 +1,85 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true,
+    "jest": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": 12,
+    "sourceType": "module"
+  },
+  "plugins": [
+    "react",
+    "@typescript-eslint",
+    "prettier"
+  ],
+  "rules": {
+    "prettier/prettier": ["error", {
+      "singleQuote": true,
+      "semi": true,
+      "tabWidth": 2,
+      "trailingComma": "es5",
+      "printWidth": 100,
+      "bracketSpacing": true,
+      "arrowParens": "avoid"
+    }],
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["error", {
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_"
+    }],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "prefer-const": "error",
+    "no-var": "error",
+    "eqeqeq": ["error", "always"],
+    "curly": ["error", "all"],
+    "consistent-return": "error",
+    "no-nested-ternary": "error",
+    "no-unneeded-ternary": "error",
+    "no-mixed-operators": "error",
+    "prefer-template": "error",
+    "no-else-return": "error",
+    "no-param-reassign": ["error", { "props": false }],
+    "no-shadow": "off",
+    "@typescript-eslint/no-shadow": ["error"],
+    "import/order": ["error", {
+      "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+      "newlines-between": "always",
+      "alphabetize": {
+        "order": "asc",
+        "caseInsensitive": true
+      }
+    }]
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  },
+  "overrides": [
+    {
+      "files": ["*.test.js", "*.test.ts", "*.test.tsx"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+} 

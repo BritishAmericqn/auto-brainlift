@@ -1,0 +1,50 @@
+TEAM CODING STANDARDS - PART 2: JAVASCRIPT/TYPESCRIPT SPECIFICS
+
+Type Safety:
+- Use TypeScript for all new code
+- Avoid 'any' type unless absolutely necessary
+- Define interfaces for all data structures
+- Use strict mode
+- Leverage type inference when obvious
+
+Async Programming:
+- Always use async/await over promises
+- Handle errors with try/catch
+- Use Promise.all for parallel operations
+- Avoid nested async calls
+- Add proper loading states
+
+State Management:
+- Keep state immutable
+- Use Redux for global state
+- Component state for local UI
+- Avoid prop drilling
+- Document state shape
+
+React Best Practices:
+- Functional components only
+- Use hooks appropriately
+- Memoize expensive operations
+- Lazy load large components
+- Keep components focused
+
+Performance Guidelines:
+- Profile before optimizing
+- Use React DevTools
+- Implement virtualization for long lists
+- Optimize bundle size
+- Cache API responses
+
+Security Practices:
+- Sanitize all user inputs
+- Use HTTPS everywhere
+- Store secrets in environment variables
+- Implement proper authentication
+- Regular dependency updates
+
+Code Review Standards:
+- Review within 24 hours
+- Focus on logic and maintainability
+- Be constructive and specific
+- Test the changes locally
+- Approve only when confident 

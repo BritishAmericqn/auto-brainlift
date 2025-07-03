@@ -805,6 +805,216 @@ ipcMain.handle('git:pull', async (event) => {
   }
 });
 
+// Style Guide Integration - Phase 2
+ipcMain.handle('style-guide:upload', async (event, filePath, options = {}) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    // Validate file exists and type
+    const allowedExtensions = ['.md', '.json', '.yaml', '.yml', '.txt'];
+    const maxSize = 1024 * 1024; // 1MB
+    
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File not found' };
+    }
+    
+    const stats = fs.statSync(filePath);
+    const fileExt = path.extname(filePath).toLowerCase();
+    
+    if (!allowedExtensions.includes(fileExt)) {
+      return { success: false, error: 'Unsupported file type. Allowed types: .md, .json, .yaml, .yml, .txt' };
+    }
+    
+    if (stats.size > maxSize) {
+      return { success: false, error: 'File too large (max 1MB)' };
+    }
+
+    // Create project style guide directory
+    const styleGuideDir = path.join(currentProject.path, '.auto-brainlift', 'style-guide');
+    if (!fs.existsSync(styleGuideDir)) {
+      fs.mkdirSync(styleGuideDir, { recursive: true });
+    }
+    
+    // Extract prefix and number from filename
+    const fileName = path.basename(filePath, fileExt);
+    const numberMatch = fileName.match(/^(.*?)(\d+)$/);
+    let prefix, number;
+    
+    if (numberMatch) {
+      prefix = numberMatch[1];
+      number = parseInt(numberMatch[2]);
+    } else {
+      // No number found, treat as _1
+      prefix = fileName + '_';
+      number = 1;
+    }
+    
+    logToFile(`Processing style guide: ${fileName}${fileExt}, prefix="${prefix}", number=${number}`);
+    
+    // Clean up old style guides
+    const existingFiles = fs.readdirSync(styleGuideDir);
+    const permanentFile = path.join(styleGuideDir, '.permanent');
+    const permanentFiles = fs.existsSync(permanentFile) ? 
+      JSON.parse(fs.readFileSync(permanentFile, 'utf8')) : [];
+    
+    existingFiles.forEach(file => {
+      if (file === 'cursor-rules.md' || file === '.permanent' || file.startsWith('.')) return;
+      
+      const fullPath = path.join(styleGuideDir, file);
+      
+      // Check if file is marked as permanent
+      if (permanentFiles.includes(file)) {
+        logToFile(`Skipping permanent file: ${file}`);
+        return;
+      }
+      
+      // Check if file has the same prefix
+      const existingName = path.basename(file, path.extname(file));
+      const existingMatch = existingName.match(/^(.*?)(\d+)$/);
+      
+      if (existingMatch && existingMatch[1] === prefix) {
+        // Same prefix, keep numbered files
+        logToFile(`Keeping related file: ${file}`);
+      } else {
+        // Different prefix or invalid format, delete
+        fs.unlinkSync(fullPath);
+        logToFile(`Deleted old style guide: ${file}`);
+      }
+    });
+    
+    // Copy file to project with standardized name
+    const newFileName = `${prefix}${number}${fileExt}`;
+    const targetPath = path.join(styleGuideDir, newFileName);
+    fs.copyFileSync(filePath, targetPath);
+    
+    // Mark as permanent if requested
+    if (options.permanent) {
+      permanentFiles.push(newFileName);
+      fs.writeFileSync(permanentFile, JSON.stringify([...new Set(permanentFiles)], null, 2));
+      logToFile(`Marked ${newFileName} as permanent`);
+    }
+    
+    // Find all files with the same prefix for merging
+    const filesToMerge = fs.readdirSync(styleGuideDir)
+      .filter(file => {
+        if (file === 'cursor-rules.md' || file === '.permanent' || file.startsWith('.')) return false;
+        const name = path.basename(file, path.extname(file));
+        const match = name.match(/^(.*?)(\d+)$/);
+        return match && match[1] === prefix;
+      })
+      .sort((a, b) => {
+        const aMatch = a.match(/(\d+)$/);
+        const bMatch = b.match(/(\d+)$/);
+        const aNum = aMatch ? parseInt(aMatch[1]) : 0;
+        const bNum = bMatch ? parseInt(bMatch[1]) : 0;
+        return aNum - bNum;
+      });
+    
+    // Merge all files with same prefix
+    let mergedContent = '';
+    for (const file of filesToMerge) {
+      const content = fs.readFileSync(path.join(styleGuideDir, file), 'utf8');
+      mergedContent += content + '\n\n';
+    }
+    
+    // Parse and convert to Cursor rules format
+    const rulesPath = path.join(styleGuideDir, 'cursor-rules.md');
+    
+    // Call Python parser with merged content
+    return new Promise((resolve) => {
+      const pythonPath = path.join(__dirname, '../venv/bin/python');
+      const scriptPath = path.join(__dirname, '../agents/style_guide_parser.py');
+      
+      // Create a temporary merged file for the parser
+      const tempMergedPath = path.join(styleGuideDir, '.temp_merged' + fileExt);
+      fs.writeFileSync(tempMergedPath, mergedContent);
+      
+      // Add --merged flag if processing multiple files
+      const args = [scriptPath, tempMergedPath, rulesPath];
+      if (filesToMerge.length > 1) {
+        args.push('--merged');
+      }
+      
+      const pythonProcess = spawn(pythonPath, args, {
+        cwd: currentProject.path
+      });
+
+      let output = '';
+      let errorOutput = '';
+      
+      pythonProcess.stdout.on('data', (data) => output += data.toString());
+      pythonProcess.stderr.on('data', (data) => errorOutput += data.toString());
+      
+      pythonProcess.on('close', async (code) => {
+        // Clean up temp file
+        if (fs.existsSync(tempMergedPath)) {
+          fs.unlinkSync(tempMergedPath);
+        }
+        
+        if (code === 0) {
+          // Read the generated rules for preview
+          let rulesPreview = '';
+          if (fs.existsSync(rulesPath)) {
+            const rulesContent = fs.readFileSync(rulesPath, 'utf8');
+            // Show up to 1500 characters for better preview
+            rulesPreview = rulesContent.substring(0, 1500) + (rulesContent.length > 1500 ? '\n\n... (see full rules in .auto-brainlift/style-guide/cursor-rules.md)' : '');
+          }
+          
+          // Update project settings
+          await projectManager.updateProjectSettings(currentProject.id, {
+            styleGuide: {
+              enabled: true,
+              originalFile: newFileName,
+              originalPath: targetPath,
+              rulesPath: rulesPath,
+              prefix: prefix,
+              fileCount: filesToMerge.length,
+              permanent: options.permanent || false,
+              lastUpdated: new Date().toISOString()
+            }
+          });
+          
+          logToFile(`Style guide uploaded and parsed: ${newFileName} (${filesToMerge.length} files merged) for project ${currentProject.name}`);
+          
+          resolve({ 
+            success: true, 
+            fileName: newFileName,
+            targetPath: targetPath,
+            rulesPath: rulesPath,
+            preview: rulesPreview,
+            mergedFiles: filesToMerge.length
+          });
+        } else {
+          logToFile(`Style guide parser error: ${errorOutput}`);
+          // Even if parsing fails, we still saved the file
+          resolve({ 
+            success: true, 
+            fileName: newFileName,
+            targetPath: targetPath,
+            preview: 'Error parsing style guide. File saved but rules generation failed.',
+            parseError: errorOutput
+          });
+        }
+      });
+      
+      pythonProcess.on('error', (err) => {
+        logToFile(`Failed to start style guide parser: ${err.message}`);
+        resolve({ 
+          success: false, 
+          error: `Failed to start parser: ${err.message}` 
+        });
+      });
+    });
+    
+  } catch (error) {
+    logToFile(`Style guide upload error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
 // Helper function to get the latest file from a directory
 async function getLatestFile(dirPath) {
   try {

@@ -1,0 +1,72 @@
+CODING STANDARDS FOR OUR TEAM
+
+General Rules:
+- Always write clean, readable code
+- Code should be self-documenting
+- If it needs a comment to explain what it does, rewrite it
+- DRY: Don't Repeat Yourself
+- KISS: Keep It Simple, Stupid
+- YAGNI: You Aren't Gonna Need It
+
+Formatting Guidelines:
+- Indentation: 2 spaces (never tabs)
+- Line length: 100 characters maximum
+- One statement per line
+- Opening braces on same line
+- Always use braces for if/else statements
+
+Variable Naming:
+- camelCase for variables and functions
+- PascalCase for classes and constructors
+- SCREAMING_SNAKE_CASE for constants
+- Descriptive names over short names
+- Boolean variables start with is/has/should
+
+Function Guidelines:
+- Functions should do one thing
+- Maximum 20 lines per function
+- Maximum 3 parameters (use object for more)
+- Always return consistent types
+- Pure functions when possible
+
+Error Handling:
+- Always catch errors at appropriate level
+- Log errors with context
+- Never swallow errors silently
+- Use custom error types
+- Fail fast and fail loud
+
+Testing Requirements:
+- Write tests before code (TDD)
+- Minimum 80% code coverage
+- Test edge cases
+- Each test should test one thing
+- Mock external dependencies
+
+Code Review Checklist:
+- Does it work?
+- Is it readable?
+- Is it tested?
+- Is it documented?
+- Does it follow our standards?
+
+Performance Tips:
+- Measure before optimizing
+- Cache expensive operations
+- Lazy load when possible
+- Avoid premature optimization
+- Profile in production environment
+
+Security Musts:
+- Never trust user input
+- Sanitize all inputs
+- Use parameterized queries
+- Keep dependencies updated
+- No secrets in code
+
+Git Practices:
+- Commit early, commit often
+- Write meaningful commit messages
+- One feature per branch
+- Rebase before merging
+- Delete branches after merge 

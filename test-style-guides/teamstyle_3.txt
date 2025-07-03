@@ -1,0 +1,50 @@
+TEAM CODING STANDARDS - PART 3: WORKFLOW AND TOOLS
+
+Git Workflow:
+- Feature branches from main
+- Branch naming: feature/description or fix/issue-number
+- Atomic commits with clear messages
+- Rebase before merging
+- Delete branches after merge
+
+Commit Messages:
+- Use conventional commits format
+- Types: feat, fix, docs, style, refactor, test, chore
+- Include ticket number when applicable
+- Keep subject line under 50 characters
+- Add body for complex changes
+
+CI/CD Pipeline:
+- All tests must pass
+- Code coverage must not decrease
+- Linting errors block merge
+- Automated deployment to staging
+- Manual approval for production
+
+Development Tools:
+- VSCode as standard editor
+- ESLint for code quality
+- Prettier for formatting
+- Jest for testing
+- Webpack for bundling
+
+Documentation Requirements:
+- README for every project
+- API documentation required
+- Architecture decisions documented
+- Deployment guide maintained
+- Troubleshooting section included
+
+Monitoring and Logging:
+- Structured logging (JSON)
+- Include request IDs
+- Log errors with stack traces
+- Monitor performance metrics
+- Set up alerts for critical issues
+
+Release Process:
+- Semantic versioning (major.minor.patch)
+- Changelog for each release
+- Tag releases in git
+- Announce major changes
+- Maintain backward compatibility 

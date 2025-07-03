@@ -1170,6 +1170,55 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+        
+        /* File Upload Area */
+        .file-upload-area {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md);
+            border: 2px dashed var(--color-border);
+            border-radius: 8px;
+            background: rgba(42, 46, 52, 0.3);
+            transition: all var(--transition-base);
+        }
+        
+        .file-upload-area:hover {
+            border-color: var(--ocean-500);
+            background: rgba(45, 74, 124, 0.1);
+        }
+        
+        .upload-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .upload-info small {
+            color: var(--foam-300);
+            font-size: var(--font-size-xs);
+            opacity: 0.8;
+        }
+        
+        #selectedFileName {
+            color: var(--color-text);
+            font-size: var(--font-size-sm);
+        }
+        
+        #rulesPreview {
+            width: 100%;
+            min-height: 250px;
+            max-height: 400px;
+            padding: var(--spacing-sm);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background: rgba(42, 46, 52, 0.5);
+            color: var(--color-text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--font-size-xs);
+            resize: vertical;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -1544,6 +1593,51 @@
                     <div class="help-text">
                         Choose when the AI should apply these rules. "Always" is recommended
                         for consistent assistance across your project.
+                    </div>
+                </div>
+                
+                <h3>Style Guide Integration</h3>
+                
+                <div class="form-group">
+                    <label>Project Style Guide</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="styleGuideEnabled" name="styleGuideEnabled">
+                        <label for="styleGuideEnabled">Enable project-specific style guide</label>
+                    </div>
+                    <div class="help-text">
+                        Upload team coding standards that will be integrated with Cursor Rules
+                    </div>
+                </div>
+                
+                <div class="form-group" id="styleGuideUpload" style="display: none;">
+                    <label for="styleGuideFile">Upload Style Guide</label>
+                    <div class="file-upload-area">
+                        <input type="file" id="styleGuideFile" accept=".md,.json,.yaml,.yml,.txt" style="display: none;">
+                        <button type="button" id="browseStyleGuide" class="button-secondary">
+                            <span>📁 Browse Files</span>
+                        </button>
+                        <div class="upload-info">
+                            <span id="selectedFileName">No file selected</span>
+                            <small>Supports: Markdown, JSON (ESLint/Prettier), YAML, Text</small>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: var(--spacing-sm);">
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="styleGuidePermanent" name="styleGuidePermanent">
+                            <label for="styleGuidePermanent">Mark as permanent</label>
+                        </div>
+                        <div class="help-text">
+                            Warning: Permanent style guides require manual file system navigation to remove
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="styleGuidePreview" style="display: none;">
+                    <label>Generated Rules Preview</label>
+                    <textarea id="rulesPreview" readonly rows="15"></textarea>
+                    <div class="help-text">
+                        This is a preview of how your style guide will appear in Cursor Rules.
+                        The full version is saved to .auto-brainlift/style-guide/cursor-rules.md
                     </div>
                 </div>
                 
@@ -2100,6 +2194,19 @@
             document.getElementById('cursorRulesType').value = 
                 globalSettings.cursorRulesType || 'always';
                 
+            // Style guide settings
+            const styleGuideEnabledEl = document.getElementById('styleGuideEnabled');
+            styleGuideEnabledEl.checked = globalSettings.styleGuideEnabled || false;
+            document.getElementById('styleGuidePermanent').checked = globalSettings.styleGuidePermanent || false;
+            
+            // Show/hide style guide sections based on enabled state
+            if (styleGuideEnabledEl.checked) {
+                document.getElementById('styleGuideUpload').style.display = 'block';
+            } else {
+                document.getElementById('styleGuideUpload').style.display = 'none';
+                document.getElementById('styleGuidePreview').style.display = 'none';
+            }
+                
             // Update cost preview
             updateAgentCostPreview();
         }
@@ -2146,7 +2253,10 @@
                 includeInGit: document.getElementById('includeInGit').checked,
                 // Cursor rules settings
                 cursorRulesEnabled: document.getElementById('cursorRulesEnabled').checked,
-                cursorRulesType: document.getElementById('cursorRulesType').value
+                cursorRulesType: document.getElementById('cursorRulesType').value,
+                // Style Guide settings
+                styleGuideEnabled: document.getElementById('styleGuideEnabled').checked,
+                styleGuidePermanent: document.getElementById('styleGuidePermanent').checked
             };
             
             try {
@@ -2441,6 +2551,69 @@
                 document.getElementById('cursorChatPath').value = result.path;
             } catch (error) {
                 showStatus(`Error selecting directory: ${error.message}`, 'error');
+            }
+        });
+        
+        // Style Guide event listeners
+        const styleGuideEnabled = document.getElementById('styleGuideEnabled');
+        const styleGuideUpload = document.getElementById('styleGuideUpload');
+        const styleGuideFile = document.getElementById('styleGuideFile');
+        const browseStyleGuide = document.getElementById('browseStyleGuide');
+        const selectedFileName = document.getElementById('selectedFileName');
+        const styleGuidePreview = document.getElementById('styleGuidePreview');
+        const rulesPreview = document.getElementById('rulesPreview');
+        
+        // Toggle style guide upload section
+        styleGuideEnabled.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                styleGuideUpload.style.display = 'block';
+            } else {
+                styleGuideUpload.style.display = 'none';
+                styleGuidePreview.style.display = 'none';
+            }
+        });
+        
+        // Browse button click
+        browseStyleGuide.addEventListener('click', () => {
+            styleGuideFile.click();
+        });
+        
+        // Handle file selection
+        styleGuideFile.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                selectedFileName.textContent = `Uploading ${file.name}...`;
+                
+                // Get options
+                const permanent = document.getElementById('styleGuidePermanent').checked;
+                
+                // Upload the file
+                const result = await window.electronAPI.styleGuide.upload(file.path, { permanent });
+                
+                if (result.success) {
+                    selectedFileName.textContent = file.name;
+                    
+                    // Show merged file info if multiple files
+                    if (result.mergedFiles && result.mergedFiles > 1) {
+                        selectedFileName.textContent += ` (merged ${result.mergedFiles} files)`;
+                    }
+                    
+                    // Show preview if available
+                    if (result.preview) {
+                        rulesPreview.value = result.preview;
+                        styleGuidePreview.style.display = 'block';
+                    }
+                    
+                    showStatus('Style guide uploaded successfully', 'success');
+                } else {
+                    selectedFileName.textContent = 'Upload failed';
+                    showStatus(`Error uploading style guide: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                selectedFileName.textContent = 'Upload failed';
+                showStatus(`Error: ${error.message}`, 'error');
             }
         });
         

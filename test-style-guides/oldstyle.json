@@ -1,0 +1,9 @@
+{
+  "name": "Old Style Guide",
+  "description": "This file should be deleted when uploading teamstyle_* files",
+  "rules": {
+    "indent": ["error", 4],
+    "quotes": ["error", "double"],
+    "semi": ["error", "never"]
+  }
+} 

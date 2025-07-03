@@ -1,0 +1,57 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "rules": {
+    "indent": ["error", 2, { "SwitchCase": 1 }],
+    "linebreak-style": ["error", "unix"],
+    "quotes": ["error", "single", { "avoidEscape": true }],
+    "semi": ["error", "always"],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "max-len": ["error", { "code": 100, "comments": 120, "ignoreUrls": true }],
+    "comma-dangle": ["error", "always-multiline"],
+    "arrow-parens": ["error", "as-needed"],
+    "object-curly-spacing": ["error", "always"],
+    "array-bracket-spacing": ["error", "never"],
+    "space-before-function-paren": ["error", {
+      "anonymous": "always",
+      "named": "never",
+      "asyncArrow": "always"
+    }],
+    "keyword-spacing": ["error", { "before": true, "after": true }],
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-multiple-empty-lines": ["error", { "max": 2, "maxEOF": 1 }],
+    "prefer-const": "error",
+    "no-var": "error",
+    "prefer-arrow-callback": "error",
+    "prefer-template": "error",
+    "no-nested-ternary": "error",
+    "consistent-return": "error",
+    "curly": ["error", "all"],
+    "brace-style": ["error", "1tbs"],
+    "camelcase": ["error", { "properties": "never", "ignoreDestructuring": true }],
+    "new-cap": ["error", { "capIsNew": false }],
+    "no-underscore-dangle": ["error", { "allowAfterThis": true }],
+    "no-param-reassign": ["error", { "props": false }],
+    "no-shadow": "off",
+    "@typescript-eslint/no-shadow": ["error"],
+    "no-use-before-define": "off",
+    "@typescript-eslint/no-use-before-define": ["error", { "functions": false }]
+  }
+} 

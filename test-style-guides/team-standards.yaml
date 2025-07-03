@@ -1,0 +1,136 @@
+# Team Development Standards Configuration
+version: 1.0
+
+project:
+  name: Auto-Brainlift
+  language: JavaScript/TypeScript
+  framework: Electron/React
+
+code_style:
+  indentation:
+    style: spaces
+    size: 2
+  
+  line_length:
+    max: 100
+    comments: 120
+  
+  quotes:
+    strings: single
+    jsx_attributes: double
+    
+  semicolons: always
+  trailing_comma: es5
+  
+naming_conventions:
+  variables:
+    style: camelCase
+    boolean_prefix: [is, has, should, can, will]
+    
+  functions:
+    style: camelCase
+    async_prefix: false
+    
+  classes:
+    style: PascalCase
+    interface_prefix: false  # Don't use 'I' prefix
+    
+  constants:
+    style: UPPER_SNAKE_CASE
+    
+  files:
+    components: PascalCase
+    utilities: camelCase
+    tests: *.test.js or *.spec.js
+    
+architecture:
+  folder_structure:
+    - src/
+      - components/     # React components
+      - hooks/         # Custom React hooks
+      - utils/         # Utility functions
+      - services/      # API and external services
+      - types/         # TypeScript type definitions
+      - styles/        # Global styles and themes
+      
+  module_system:
+    imports:
+      order:
+        - external     # npm packages
+        - internal     # project modules
+        - types       # type imports
+      path_style: absolute  # Use @/ prefix
+      
+best_practices:
+  async_handling:
+    preferred: async/await
+    error_handling: try/catch
+    parallel: Promise.all
+    
+  state_management:
+    immutability: required
+    updates: spread_operator
+    
+  testing:
+    framework: Jest
+    coverage_target: 80
+    structure: AAA  # Arrange, Act, Assert
+    
+  documentation:
+    functions: JSDoc
+    components: PropTypes or TypeScript
+    readme: required
+    
+  security:
+    no_eval: true
+    sanitize_inputs: true
+    https_only: true
+    
+git_workflow:
+  branch_naming:
+    feature: feature/description
+    bugfix: fix/description
+    hotfix: hotfix/description
+    
+  commit_messages:
+    format: conventional
+    types: [feat, fix, docs, style, refactor, test, chore]
+    
+  pull_requests:
+    reviewers_required: 1
+    tests_must_pass: true
+    
+performance:
+  bundle_size:
+    warning: 500kb
+    error: 1mb
+    
+  optimization:
+    - lazy_loading
+    - code_splitting
+    - memoization
+    - debouncing
+    
+tools:
+  linter: ESLint
+  formatter: Prettier
+  type_checker: TypeScript
+  bundler: Webpack
+  package_manager: npm
+
+deployment:
+  environments:
+    - development
+    - staging
+    - production
+    
+  ci_cd:
+    provider: GitHub Actions
+    auto_deploy: false
+    run_tests: true
+    
+accessibility:
+  wcag_level: AA
+  keyboard_navigation: required
+  screen_reader_support: required
+  color_contrast_ratio: 4.5:1 

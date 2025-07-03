@@ -1,0 +1,42 @@
+TEAM CODING STANDARDS - PART 1: GENERAL PRINCIPLES
+
+Core Philosophy:
+- Write code for humans first, machines second
+- Clarity beats cleverness every time
+- Consistency is king
+- Document the why, not the what
+
+Naming Conventions:
+- Variables: camelCase with descriptive names
+- Functions: camelCase, verb-based (getUserData, calculateTotal)
+- Classes: PascalCase (UserController, DataService)
+- Constants: SCREAMING_SNAKE_CASE (MAX_RETRIES, API_BASE_URL)
+- Files: kebab-case for utilities, PascalCase for components
+
+Code Organization:
+- One class per file
+- Group related functionality
+- Keep files under 300 lines
+- Extract complex logic to separate functions
+- Use barrel exports for clean imports
+
+Comments and Documentation:
+- JSDoc for all public functions
+- Explain complex algorithms
+- Document edge cases
+- Include examples for utility functions
+- Keep comments up to date
+
+Error Handling:
+- Always catch at appropriate level
+- Log with context
+- Use custom error classes
+- Fail fast with clear messages
+- Never ignore errors silently
+
+Testing Philosophy:
+- Test behavior, not implementation
+- Write tests first (TDD)
+- Aim for 80% coverage minimum
+- Mock external dependencies
+- Keep tests readable and maintainable 

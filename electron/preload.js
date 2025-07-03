@@ -97,5 +97,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     commit: (message) => ipcRenderer.invoke('git:commit', message),
     push: () => ipcRenderer.invoke('git:push'),
     pull: () => ipcRenderer.invoke('git:pull')
+  },
+
+  // Style Guide API
+  styleGuide: {
+    upload: (filePath, options) => ipcRenderer.invoke('style-guide:upload', filePath, options),
+    preview: () => ipcRenderer.invoke('style-guide:preview'),
+    apply: () => ipcRenderer.invoke('style-guide:apply'),
+    getStatus: () => ipcRenderer.invoke('style-guide:get-status')
   }
 }); 
