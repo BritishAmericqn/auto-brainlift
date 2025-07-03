@@ -1108,6 +1108,78 @@ ipcMain.handle('slack:send-summary', async (event, summaryData) => {
   }
 });
 
+// Test Slack summary handler
+ipcMain.handle('slack:test-summary', async () => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    const globalSettings = await projectManager.getGlobalSettings();
+    
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+    
+    // First check if Slack is enabled and configured
+    if (!globalSettings.slackEnabled) {
+      return { success: false, error: 'Slack integration is not enabled' };
+    }
+    
+    if (!globalSettings.slackToken) {
+      return { success: false, error: 'Slack bot token is not configured' };
+    }
+    
+    if (!globalSettings.slackChannel) {
+      return { success: false, error: 'Slack channel is not configured' };
+    }
+    
+    // Look for the most recent brainlift file
+    const brainliftDir = path.join(currentProject.path, 'brainlifts');
+    if (!fs.existsSync(brainliftDir)) {
+      return { success: false, error: 'No brainlifts found. Generate a summary first.' };
+    }
+    
+    const brainliftFiles = fs.readdirSync(brainliftDir)
+      .filter(file => file.endsWith('.md'))
+      .sort((a, b) => {
+        const statA = fs.statSync(path.join(brainliftDir, a));
+        const statB = fs.statSync(path.join(brainliftDir, b));
+        return statB.mtime.getTime() - statA.mtime.getTime();
+      });
+    
+    if (brainliftFiles.length === 0) {
+      return { success: false, error: 'No brainlift files found. Generate a summary first.' };
+    }
+    
+    // Read the most recent brainlift file
+    const latestBrainliftFile = path.join(brainliftDir, brainliftFiles[0]);
+    const brainliftContent = fs.readFileSync(latestBrainliftFile, 'utf8');
+    
+    // Parse the brainlift content
+    const summaryData = parseBrainliftContent(brainliftContent);
+    
+    // Add test indication and force sending regardless of notification rules
+    summaryData.isTest = true;
+    summaryData.testMessage = '🧪 **This is a test message** - Your Slack integration is working!';
+    
+    const slack = new SlackIntegration(globalSettings.slackToken, {
+      channel: globalSettings.slackChannel || '#dev-updates'
+    });
+    
+    logToFile(`Sending test Slack summary for project: ${currentProject.name}`);
+    const result = await slack.sendBrainliftSummary(summaryData, currentProject.name);
+    
+    if (result.success) {
+      logToFile(`Test Slack summary sent successfully`);
+    } else {
+      logToFile(`Test Slack summary failed: ${result.error}`);
+    }
+    
+    return result;
+  } catch (error) {
+    logToFile(`Test Slack summary error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
 // Helper function to get the latest file from a directory
 async function getLatestFile(dirPath) {
   try {
@@ -1207,6 +1279,15 @@ function parseBrainliftContent(content) {
     overallScore: 0,
     securityScore: 0,
     qualityScore: 0,
+    documentationScore: 0,
+    scores: {
+      overall: 0,
+      security: 0,
+      quality: 0,
+      documentation: 0
+    },
+    commitHash: '',
+    commitMessage: '',
     commitInfo: {
       hash: '',
       message: ''
@@ -1215,33 +1296,63 @@ function parseBrainliftContent(content) {
   };
   
   try {
-    // Extract overall score
-    const overallScoreMatch = content.match(/Overall\s+Score[:\s]+(\d+)/i);
+    // Extract overall score (simplified regex for better compatibility)
+    const overallScoreMatch = content.match(/Overall\s+Score.*?(\d+)/i);
     if (overallScoreMatch) {
       data.overallScore = parseInt(overallScoreMatch[1]);
+      data.scores.overall = parseInt(overallScoreMatch[1]);
+      logToFile(`Parsed Overall Score: ${overallScoreMatch[1]}`);
+    } else {
+      logToFile('Failed to parse Overall Score from content');
     }
     
-    // Extract security score
-    const securityScoreMatch = content.match(/Security\s+Score[:\s]+(\d+)/i);
+    // Extract security score (simplified regex for better compatibility)
+    const securityScoreMatch = content.match(/Security\s+Score.*?(\d+)/i);
     if (securityScoreMatch) {
       data.securityScore = parseInt(securityScoreMatch[1]);
+      data.scores.security = parseInt(securityScoreMatch[1]);
+      logToFile(`Parsed Security Score: ${securityScoreMatch[1]}`);
+    } else {
+      logToFile('Failed to parse Security Score from content');
     }
     
-    // Extract quality score
-    const qualityScoreMatch = content.match(/Quality\s+Score[:\s]+(\d+)/i);
+    // Extract quality score (simplified regex for better compatibility)
+    const qualityScoreMatch = content.match(/Quality\s+Score.*?(\d+)/i);
     if (qualityScoreMatch) {
       data.qualityScore = parseInt(qualityScoreMatch[1]);
+      data.scores.quality = parseInt(qualityScoreMatch[1]);
+      logToFile(`Parsed Quality Score: ${qualityScoreMatch[1]}`);
+    } else {
+      logToFile('Failed to parse Quality Score from content');
     }
     
-    // Extract commit info
-    const commitHashMatch = content.match(/Commit[:\s]+([a-f0-9]{7,40})/i);
+    // Extract documentation score (simplified regex for better compatibility)
+    const documentationScoreMatch = content.match(/Documentation\s+Score.*?(\d+)/i);
+    if (documentationScoreMatch) {
+      data.documentationScore = parseInt(documentationScoreMatch[1]);
+      data.scores.documentation = parseInt(documentationScoreMatch[1]);
+      logToFile(`Parsed Documentation Score: ${documentationScoreMatch[1]}`);
+    } else {
+      logToFile('Failed to parse Documentation Score from content');
+    }
+    
+    // Extract commit info (simplified for better compatibility)
+    const commitHashMatch = content.match(/Commit.*?([a-f0-9A-Z]{3,40})/i);
     if (commitHashMatch) {
       data.commitInfo.hash = commitHashMatch[1];
+      data.commitHash = commitHashMatch[1];
+      logToFile(`Parsed Commit Hash: ${commitHashMatch[1]}`);
+    } else {
+      logToFile('Failed to parse Commit Hash from content');
     }
     
-    const commitMessageMatch = content.match(/Commit\s+Message[:\s]+(.+)/i);
+    const commitMessageMatch = content.match(/Message.*?:\s*(.+)/i);
     if (commitMessageMatch) {
       data.commitInfo.message = commitMessageMatch[1].trim();
+      data.commitMessage = commitMessageMatch[1].trim();
+      logToFile(`Parsed Commit Message: ${commitMessageMatch[1]}`);
+    } else {
+      logToFile('Failed to parse Commit Message from content');
     }
     
     // Extract critical issues (look for sections with critical/high severity)
@@ -1249,7 +1360,15 @@ function parseBrainliftContent(content) {
     if (criticalSectionMatch) {
       const issueMatches = criticalSectionMatch[0].match(/[-•]\s+(.+)/g);
       if (issueMatches) {
-        data.criticalIssues = issueMatches.map(issue => issue.replace(/^[-•]\s+/, '').trim());
+        const realIssues = issueMatches
+          .map(issue => issue.replace(/^[-•]\s+/, '').trim())
+          .filter(issue => !issue.match(/none\s+identified/i) && !issue.match(/no\s+issues/i) && !issue.match(/^none$/i));
+        
+        // Only set criticalIssues if there are actual issues
+        if (realIssues.length > 0) {
+          data.criticalIssues = realIssues;
+        }
+        // If no real issues, leave criticalIssues as empty array (won't show section)
       }
     }
     
@@ -1280,9 +1399,31 @@ function parseBrainliftContent(content) {
 // Send Slack notification with brainlift summary
 async function sendSlackNotification(summaryData, projectName, globalSettings) {
   try {
-    // Use the existing slack:send-summary handler to ensure consistency
-    const event = {}; // Mock event object
-    const result = await ipcMain._handlers.get('slack:send-summary')(event, summaryData);
+    // Check notification rules
+    const notificationRule = globalSettings.slackNotificationRule || 'all';
+    if (notificationRule === 'issues' && (!summaryData.criticalIssues || summaryData.criticalIssues.length === 0)) {
+      logToFile('Skipping Slack notification: No issues found and rule is "issues only"');
+      return { success: true, message: 'No notification sent (no issues found)' };
+    }
+    
+    if (notificationRule === 'critical' && summaryData.overallScore >= 70) {
+      logToFile('Skipping Slack notification: Score is acceptable and rule is "critical only"');
+      return { success: true, message: 'No notification sent (score is acceptable)' };
+    }
+    
+    const slack = new SlackIntegration(globalSettings.slackToken, {
+      channel: globalSettings.slackChannel || '#dev-updates'
+    });
+    
+    logToFile(`Sending Slack summary for project: ${projectName}`);
+    const result = await slack.sendBrainliftSummary(summaryData, projectName);
+    
+    if (result.success) {
+      logToFile(`Slack summary sent successfully to channel: ${result.channel}`);
+    } else {
+      logToFile(`Failed to send Slack summary: ${result.error}`);
+    }
+    
     return result;
   } catch (error) {
     return { success: false, error: error.message };

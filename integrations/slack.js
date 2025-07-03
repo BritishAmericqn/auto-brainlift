@@ -29,100 +29,113 @@ class SlackIntegration {
       
       const result = await this.client.chat.postMessage({
         channel: this.defaultChannel,
-        blocks: blocks,
-        text: `New brainlift for ${projectName}: ${data.overallScore}/100`
+        text: `🧠 Brainlift Summary: ${projectName}`,
+        blocks: blocks
       });
       
-      return { 
-        success: true, 
-        ts: result.ts, 
-        channel: result.channel 
-      };
+      return { success: true, messageId: result.ts };
     } catch (error) {
-      console.error('Slack send error:', error);
-      return { 
-        success: false, 
-        error: error.message 
-      };
+      return { success: false, error: error.message };
     }
   }
 
   formatBrainliftMessage(data, projectName) {
-    const { overallScore, securityScore, qualityScore, commitInfo, criticalIssues } = data;
-    
     const blocks = [
       {
         type: "header",
         text: {
           type: "plain_text",
-          text: `🧠 Brainlift Summary: ${projectName}`,
-          emoji: true
+          text: `🧠 Brainlift Summary: ${projectName}`
         }
       },
       {
+        type: "divider"
+      }
+    ];
+
+    // Add test message if this is a test
+    if (data.isTest && data.testMessage) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: data.testMessage
+        }
+      });
+      blocks.push({
+        type: "divider"
+      });
+    }
+
+    // Add scores section
+    if (data.scores) {
+      blocks.push({
         type: "section",
         fields: [
           {
             type: "mrkdwn",
-            text: `*Overall Score:* ${this.getScoreEmoji(overallScore)} ${overallScore}/100`
+            text: `*Overall Score:* ${data.scores.overall || 'N/A'}/100`
+          },
+          {
+            type: "mrkdwn", 
+            text: `*Security:* ${data.scores.security || 'N/A'}/100`
           },
           {
             type: "mrkdwn",
-            text: `*Commit:* \`${commitInfo.hash.substring(0, 7)}\``
+            text: `*Quality:* ${data.scores.quality || 'N/A'}/100`
           },
           {
             type: "mrkdwn",
-            text: `*Security:* ${this.getScoreEmoji(securityScore)} ${securityScore}/100`
-          },
-          {
-            type: "mrkdwn",
-            text: `*Quality:* ${this.getScoreEmoji(qualityScore)} ${qualityScore}/100`
+            text: `*Documentation:* ${data.scores.documentation || 'N/A'}/100`
           }
         ]
-      }
-    ];
+      });
+    }
 
-    if (commitInfo.message) {
+    // Add commit info
+    if (data.commitHash) {
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*Commit Message:* ${commitInfo.message}`
+          text: `*Commit:* \`${data.commitHash.substring(0, 8)}\`${data.commitMessage ? `\n*Message:* ${data.commitMessage}` : ''}`
         }
       });
     }
 
-    if (criticalIssues && criticalIssues.length > 0) {
-      blocks.push({
-        type: "divider"
-      });
+    // Add critical issues
+    if (data.criticalIssues && data.criticalIssues.length > 0) {
       blocks.push({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*⚠️ Critical Issues Found:*\n${criticalIssues.map(issue => `• ${issue}`).join('\n')}`
+          text: `*🚨 Critical Issues (${data.criticalIssues.length}):*`
         }
+      });
+      
+      data.criticalIssues.slice(0, 5).forEach(issue => {
+        blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `• ${issue}`
+          }
+        });
       });
     }
 
+    // Add timestamp
     blocks.push({
       type: "context",
       elements: [
         {
           type: "mrkdwn",
-          text: `Generated at ${new Date().toLocaleString()} | Auto-Brainlift v2.1`
+          text: `Generated: ${new Date().toLocaleString()}`
         }
       ]
     });
 
     return blocks;
-  }
-
-  getScoreEmoji(score) {
-    if (score >= 90) return '🟢';
-    if (score >= 70) return '🟡';
-    if (score >= 50) return '🟠';
-    return '🔴';
   }
 }
 

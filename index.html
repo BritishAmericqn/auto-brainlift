@@ -1680,6 +1680,9 @@
                     <button type="button" id="testSlackBtn" class="button-secondary">
                         <span>🧪 Test Connection</span>
                     </button>
+                    <button type="button" id="testSlackSummaryBtn" class="button-secondary" style="margin-left: 10px;">
+                        <span>📨 Test Send Summary</span>
+                    </button>
                     <div id="slackTestResult" class="help-text" style="margin-top: var(--spacing-sm);"></div>
                 </div>
                 
@@ -2691,6 +2694,7 @@
         const slackNotificationRules = document.getElementById('slackNotificationRules');
         const slackTest = document.getElementById('slackTest');
         const testSlackBtn = document.getElementById('testSlackBtn');
+        const testSlackSummaryBtn = document.getElementById('testSlackSummaryBtn');
         const slackTestResult = document.getElementById('slackTestResult');
         
         // Toggle Slack sections
@@ -2747,6 +2751,47 @@
             } finally {
                 testSlackBtn.disabled = false;
                 testSlackBtn.innerHTML = '<span>🧪 Test Connection</span>';
+            }
+        });
+        
+        // Test Slack summary sending
+        testSlackSummaryBtn.addEventListener('click', async () => {
+            const token = document.getElementById('slackToken').value;
+            const channel = document.getElementById('slackChannel').value;
+            
+            if (!token) {
+                slackTestResult.textContent = '❌ Please enter a bot token';
+                slackTestResult.style.color = 'var(--color-error)';
+                return;
+            }
+            
+            if (!channel) {
+                slackTestResult.textContent = '❌ Please enter a channel';
+                slackTestResult.style.color = 'var(--color-error)';
+                return;
+            }
+            
+            try {
+                testSlackSummaryBtn.disabled = true;
+                testSlackSummaryBtn.innerHTML = '<span>🔄 Sending...</span>';
+                slackTestResult.textContent = 'Sending test summary...';
+                slackTestResult.style.color = 'var(--color-text-secondary)';
+                
+                const result = await window.electronAPI.slack.testSummary();
+                
+                if (result.success) {
+                    slackTestResult.textContent = `✅ Test summary sent successfully! Check your ${channel} channel.`;
+                    slackTestResult.style.color = 'var(--color-success)';
+                } else {
+                    slackTestResult.textContent = `❌ Failed to send summary: ${result.error}`;
+                    slackTestResult.style.color = 'var(--color-error)';
+                }
+            } catch (error) {
+                slackTestResult.textContent = `❌ Error: ${error.message}`;
+                slackTestResult.style.color = 'var(--color-error)';
+            } finally {
+                testSlackSummaryBtn.disabled = false;
+                testSlackSummaryBtn.innerHTML = '<span>📨 Test Send Summary</span>';
             }
         });
         

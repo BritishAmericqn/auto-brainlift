@@ -110,6 +110,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Slack API
   slack: {
     test: (token, channel) => ipcRenderer.invoke('slack:test', token, channel),
-    sendSummary: (summaryData) => ipcRenderer.invoke('slack:send-summary', summaryData)
+    sendSummary: (summaryData) => ipcRenderer.invoke('slack:send-summary', summaryData),
+    testSummary: () => ipcRenderer.invoke('slack:test-summary')
   }
 }); 
