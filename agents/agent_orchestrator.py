@@ -20,6 +20,7 @@ from agents.base_agent import AgentState, BaseAgent
 from agents.security_agent import SecurityAgent
 from agents.quality_agent import QualityAgent
 from agents.documentation_agent import DocumentationAgent
+from agents.cursor_chat_agent import CursorChatAgent
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class AgentOrchestrator:
         self.agents = self._initialize_agents()
         
         # Thread pool for parallel execution
-        self.executor = ThreadPoolExecutor(max_workers=3)
+        self.executor = ThreadPoolExecutor(max_workers=4)  # Increased for cursor chat agent
         
         # Track execution metrics
         self.metrics = {
@@ -50,6 +51,10 @@ class AgentOrchestrator:
         agent_configs = self.settings.get("agents", {})
         
         agents = {
+            "cursor_chat": CursorChatAgent(
+                enabled=agent_configs.get("cursor_chat", {}).get("enabled", True),
+                model=agent_configs.get("cursor_chat", {}).get("model", "gpt-4-turbo")
+            ),
             "security": SecurityAgent(
                 enabled=agent_configs.get("security", {}).get("enabled", True),
                 model=agent_configs.get("security", {}).get("model", "gpt-4-turbo")
@@ -224,6 +229,7 @@ class AgentOrchestrator:
         
         # Calculate overall scores
         results["overall_scores"] = {
+            "cursor_chat": results["agents"].get("cursor_chat", {}).get("analysis", {}).get("context_score", 0),
             "security": results["agents"].get("security", {}).get("analysis", {}).get("security_score", 100),
             "quality": results["agents"].get("quality", {}).get("analysis", {}).get("quality_score", 70),
             "documentation": results["agents"].get("documentation", {}).get("analysis", {}).get("documentation_score", 50)
@@ -234,6 +240,13 @@ class AgentOrchestrator:
     def _generate_summary(self, agent_results: Dict[str, Any]) -> str:
         """Generate a unified summary from all agent results"""
         summary_parts = []
+        
+        # Cursor Chat summary (put first as it provides context)
+        if "cursor_chat" in agent_results and "analysis" in agent_results["cursor_chat"]:
+            chat = agent_results["cursor_chat"]["analysis"]
+            score = chat.get("context_score", 0)
+            if score > 0:
+                summary_parts.append(f"Dev Context: {score}/100")
         
         # Security summary
         if "security" in agent_results and "analysis" in agent_results["security"]:

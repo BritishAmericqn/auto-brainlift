@@ -1953,6 +1953,20 @@
                 </div>
                 
                 <div class="form-group">
+                    <label>Cursor Chat Agent</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="cursorChatAgentEnabled" name="cursorChatAgentEnabled" checked>
+                        <label for="cursorChatAgentEnabled">Enable Cursor chat analysis agent</label>
+                    </div>
+                    <div class="agent-model-selector">
+                        <select id="cursorChatAgentModel" name="cursorChatAgentModel" class="agent-model-dropdown">
+                            <option value="gpt-4-turbo">GPT-4 Turbo ($0.01/1k)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo ($0.0015/1k)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
                     <label>Security Agent</label>
                     <div class="toggle-switch">
                         <input type="checkbox" id="securityAgentEnabled" name="securityAgentEnabled" checked>
@@ -2019,16 +2033,17 @@
                     </div>
                 </div>
                 
-                <h3>Cursor Chat Integration (Beta)</h3>
+                <h3>Cursor Chat Integration</h3>
                 
                 <div class="form-group">
-                    <label>Enable Cursor Chat Analysis</label>
+                    <label>Enable Cursor Chat Agent Processing</label>
                     <div class="toggle-switch">
                         <input type="checkbox" id="cursorChatEnabled" name="cursorChatEnabled">
-                        <label for="cursorChatEnabled">Include Cursor chat history in summaries (opt-in)</label>
+                        <label for="cursorChatEnabled">Allow Cursor Chat Agent to read chat history</label>
                     </div>
                     <div class="help-text">
-                        Analyzes your Cursor chat conversations to provide development context
+                        When enabled, the Cursor Chat Agent can analyze your chat conversations for context.
+                        Note: The agent itself must also be enabled in Multi-Agent Configuration above.
                     </div>
                 </div>
                 
@@ -2931,6 +2946,12 @@
             // Update multi-agent settings
             document.getElementById('agentExecutionMode').value = globalSettings.agentExecutionMode || 'parallel';
             
+            // Cursor Chat agent
+            document.getElementById('cursorChatAgentEnabled').checked = 
+                globalSettings.agents?.cursor_chat?.enabled !== false;
+            document.getElementById('cursorChatAgentModel').value = 
+                globalSettings.agents?.cursor_chat?.model || 'gpt-4-turbo';
+            
             // Security agent
             document.getElementById('securityAgentEnabled').checked = 
                 globalSettings.agents?.security?.enabled !== false;
@@ -3026,6 +3047,10 @@
                 // Multi-agent settings
                 agentExecutionMode: document.getElementById('agentExecutionMode').value,
                 agents: {
+                    cursor_chat: {
+                        enabled: document.getElementById('cursorChatAgentEnabled').checked,
+                        model: document.getElementById('cursorChatAgentModel').value
+                    },
                     security: {
                         enabled: document.getElementById('securityAgentEnabled').checked,
                         model: document.getElementById('securityAgentModel').value
@@ -3265,6 +3290,11 @@
             const tokensPerAgent = 1000; // Average estimate
             
             // Calculate cost for each enabled agent
+            if (document.getElementById('cursorChatAgentEnabled').checked) {
+                const model = document.getElementById('cursorChatAgentModel').value;
+                totalCost += (tokensPerAgent / 1000) * modelCosts[model];
+            }
+            
             if (document.getElementById('securityAgentEnabled').checked) {
                 const model = document.getElementById('securityAgentModel').value;
                 totalCost += (tokensPerAgent / 1000) * modelCosts[model];
@@ -3361,6 +3391,8 @@
         settingsForm.addEventListener('submit', saveSettings);
         
         // Multi-agent event listeners
+        document.getElementById('cursorChatAgentEnabled').addEventListener('change', updateAgentCostPreview);
+        document.getElementById('cursorChatAgentModel').addEventListener('change', updateAgentCostPreview);
         document.getElementById('securityAgentEnabled').addEventListener('change', updateAgentCostPreview);
         document.getElementById('securityAgentModel').addEventListener('change', updateAgentCostPreview);
         document.getElementById('qualityAgentEnabled').addEventListener('change', updateAgentCostPreview);

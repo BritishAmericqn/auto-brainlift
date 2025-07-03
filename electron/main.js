@@ -167,6 +167,8 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
           COMMIT_TOKEN_LIMIT: String(currentProject.settings.commitTokenLimit || 10000),
           // Pass multi-agent settings
           AGENT_EXECUTION_MODE: currentProject.settings.agentExecutionMode || 'parallel',
+          CURSOR_CHAT_AGENT_ENABLED: currentProject.settings.agents?.cursor_chat?.enabled !== false ? 'true' : 'false',
+          CURSOR_CHAT_AGENT_MODEL: currentProject.settings.agents?.cursor_chat?.model || 'gpt-4-turbo',
           SECURITY_AGENT_ENABLED: currentProject.settings.agents?.security?.enabled !== false ? 'true' : 'false',
           SECURITY_AGENT_MODEL: currentProject.settings.agents?.security?.model || 'gpt-4-turbo',
           QUALITY_AGENT_ENABLED: currentProject.settings.agents?.quality?.enabled !== false ? 'true' : 'false',
@@ -343,6 +345,8 @@ ipcMain.handle('analyze-wip', async (event, mode) => {
           COMMIT_TOKEN_LIMIT: String(currentProject.settings.commitTokenLimit || 10000),
           // Pass multi-agent settings
           AGENT_EXECUTION_MODE: currentProject.settings.agentExecutionMode || 'parallel',
+          CURSOR_CHAT_AGENT_ENABLED: currentProject.settings.agents?.cursor_chat?.enabled !== false ? 'true' : 'false',
+          CURSOR_CHAT_AGENT_MODEL: currentProject.settings.agents?.cursor_chat?.model || 'gpt-4-turbo',
           SECURITY_AGENT_ENABLED: currentProject.settings.agents?.security?.enabled !== false ? 'true' : 'false',
           SECURITY_AGENT_MODEL: currentProject.settings.agents?.security?.model || 'gpt-4-turbo',
           QUALITY_AGENT_ENABLED: currentProject.settings.agents?.quality?.enabled !== false ? 'true' : 'false',
