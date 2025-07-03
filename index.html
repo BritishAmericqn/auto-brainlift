@@ -1135,12 +1135,16 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(10, 11, 13, 0.8);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
+            background-color: rgba(10, 11, 13, 0.85);
+            /* Reduce backdrop-filter intensity for better performance */
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
             z-index: 1000;
             align-items: center;
             justify-content: center;
+            /* GPU acceleration */
+            will-change: opacity;
+            transform: translateZ(0);
         }
         
         .modal.show {
@@ -1168,6 +1172,22 @@
                 0 20px 60px rgba(12, 25, 41, 0.8),
                 inset 0 1px 0 rgba(225, 232, 237, 0.05);
             animation: slideUp 0.3s ease;
+            
+            /* Enable GPU acceleration */
+            will-change: transform;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            
+            /* Force smooth scrolling with continuous rendering */
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            
+            /* Prevent scroll optimization from hiding content */
+            scroll-behavior: auto;
+            
+            /* Force webkit to keep rendering during scroll */
+            -webkit-transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
         }
         
         /* Custom scrollbar for modal */
@@ -1259,6 +1279,9 @@
         
         .form-group {
             margin-bottom: var(--spacing-lg);
+            /* Force rendering during scroll */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
         
         .form-group label {
@@ -1280,6 +1303,12 @@
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             transition: all var(--transition-base);
+            
+            /* Remove backdrop-filter from form elements in modal */
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            /* Use solid background instead */
+            background-color: rgba(42, 46, 52, 0.8);
         }
         
         .form-group input:focus,
@@ -1327,6 +1356,11 @@
             position: relative;
             cursor: pointer;
             transition: all var(--transition-base);
+            
+            /* Force GPU layer */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            will-change: background-color;
         }
         
         .toggle-switch input[type="checkbox"]:checked {
@@ -1346,6 +1380,8 @@
             left: 2px;
             transition: all var(--transition-base);
             box-shadow: 0 2px 4px rgba(10, 11, 13, 0.3);
+            
+            will-change: transform;
         }
         
         .toggle-switch input[type="checkbox"]:checked::before {
@@ -1370,6 +1406,10 @@
             transition: all var(--transition-base);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
+            
+            /* Force GPU layer for better scroll performance */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
         
         .agent-model-dropdown:hover {
@@ -1665,6 +1705,67 @@
             background: rgba(45, 74, 124, 0.2);
             border-color: rgba(45, 74, 124, 0.5);
             color: var(--foam-200);
+        }
+        
+        /* Ensure animations continue during scroll */
+        @media (prefers-reduced-motion: no-preference) {
+            .modal-content * {
+                /* Keep animations running to prevent visual pops */
+                animation-play-state: running !important;
+            }
+        }
+        
+        /* Optimize button rendering in modal */
+        .modal-content .button,
+        .modal-content .button-secondary {
+            /* Simplify hover effects in scrollable areas */
+            transition: background-color var(--transition-base), 
+                        border-color var(--transition-base),
+                        transform var(--transition-base);
+        }
+        
+        /* Force continuous rendering during scroll */
+        .modal-content {
+            /* Remove paint containment to ensure continuous rendering */
+            contain: none;
+            /* Force continuous repainting */
+            will-change: scroll-position;
+            /* Prevent browser from hiding content during scroll */
+            content-visibility: visible !important;
+        }
+        
+        /* Ensure all modal children are always visible */
+        .modal-content * {
+            content-visibility: visible !important;
+        }
+        
+        /* Ensure form elements are always painted */
+        .modal-content .form-group,
+        .modal-content .toggle-switch,
+        .modal-content .button,
+        .modal-content .button-secondary {
+            /* Force elements to their own layer for continuous rendering */
+            transform: translate3d(0, 0, 0);
+            -webkit-transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            perspective: 1000px;
+            -webkit-perspective: 1000px;
+        }
+        
+        /* Specific fix for checkboxes and selects during scroll */
+        .modal-content input[type="checkbox"],
+        .modal-content select,
+        .modal-content input[type="text"],
+        .modal-content input[type="password"],
+        .modal-content input[type="number"] {
+            /* Force rendering on GPU layer */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            /* Prevent flickering */
+            -webkit-font-smoothing: subpixel-antialiased;
+            /* Force immediate paint */
+            will-change: transform;
         }
     </style>
 </head>
@@ -3733,11 +3834,34 @@
             }
         });
         
+        // Force continuous rendering during scroll in modal
+        function setupModalScrollFix() {
+            const modalContent = document.querySelector('.modal-content');
+            if (!modalContent) return;
+            
+            let scrollTimeout;
+            modalContent.addEventListener('scroll', () => {
+                // Force a repaint during scroll
+                modalContent.style.transform = 'translateZ(0)';
+                
+                // Clear existing timeout
+                clearTimeout(scrollTimeout);
+                
+                // Reset after scroll ends
+                scrollTimeout = setTimeout(() => {
+                    modalContent.style.transform = '';
+                }, 100);
+            }, { passive: true });
+        }
+        
         // Load initial data
         window.addEventListener('DOMContentLoaded', () => {
             loadLatestFiles();
             loadProjects();
             loadCurrentProject();
+            
+            // Setup modal scroll fix
+            setupModalScrollFix();
             
             // Load global settings on startup
             loadGlobalSettings();
