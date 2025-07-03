@@ -232,20 +232,29 @@
             background-size: 200% 200%;
             color: var(--foam-100);
             border: none;
-            padding: var(--spacing-sm) var(--spacing-lg);
-            font-size: var(--font-size-base);
+            padding: 12px 20px;
+            font-size: 15px;
             font-weight: 500;
             border-radius: 8px;
             cursor: pointer;
             transition: all var(--transition-base);
-            min-height: 44px;
+            min-height: 48px;
             display: inline-flex;
             align-items: center;
-            gap: var(--spacing-sm);
+            justify-content: center;
+            gap: 6px;
             position: relative;
             overflow: hidden;
             text-shadow: 0 1px 2px rgba(10, 11, 13, 0.3);
-            letter-spacing: 0.02em;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        .button > span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         
         .button::before {
@@ -274,6 +283,11 @@
         .button:active {
             transform: translateY(0);
             box-shadow: var(--shadow-base);
+        }
+        
+        .button:focus {
+            outline: 2px solid var(--ocean-400);
+            outline-offset: 2px;
         }
         
         .button:disabled {
@@ -465,6 +479,29 @@
             .output-section {
                 grid-template-columns: 1fr;
             }
+            
+            /* Stack buttons on smaller screens */
+            .controls-group {
+                flex-wrap: wrap;
+            }
+            
+            .controls-group > .button,
+            .controls-group > .wip-analysis-dropdown {
+                flex: 1 1 100%;
+            }
+            
+            .staging-controls {
+                flex-wrap: wrap;
+            }
+            
+            .staging-controls > .button-secondary,
+            .staging-controls > .file-selection-dropdown {
+                flex: 1 1 100%;
+            }
+            
+            .generation-section {
+                min-width: 100%;
+            }
         }
         
         /* Project Management Styles */
@@ -547,20 +584,23 @@
             background: rgba(42, 46, 52, 0.5);
             color: var(--color-text);
             border: 1px solid var(--color-border);
-            padding: var(--spacing-sm) var(--spacing-md);
+            padding: 12px var(--spacing-md);
             font-size: var(--font-size-base);
             font-weight: 500;
             border-radius: 8px;
             cursor: pointer;
             transition: all var(--transition-base);
-            min-height: 44px;
+            min-height: 48px;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: var(--spacing-sm);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             position: relative;
             overflow: hidden;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         .button-secondary::before {
@@ -588,18 +628,44 @@
         .button-secondary:active {
             transform: translateY(0);
         }
+        
+        .button-secondary:focus {
+            outline: 2px solid var(--ocean-400);
+            outline-offset: 2px;
+        }
 
         /* Git Controls Styling */
         .controls-group {
             display: flex;
             gap: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-            align-items: center;
+            margin-bottom: var(--spacing-lg);
+            align-items: stretch;
+        }
+        
+        /* Make all buttons in controls-group equal width */
+        .controls-group > .button,
+        .controls-group > .wip-analysis-dropdown {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .controls-group > .button {
+            width: 100%;
+        }
+        
+        .wip-analysis-dropdown .button {
+            width: 100%;
         }
 
         .git-controls {
             display: flex;
             gap: var(--spacing-sm);
+        }
+        
+        /* Make git control buttons equal width */
+        .git-controls > .button-secondary {
+            flex: 1;
+            min-width: 0;
         }
 
         /* Split controls layout */
@@ -616,6 +682,11 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
+        }
+        
+        .generation-section {
+            flex: 1.3;  /* Give more space to Summary Generation section */
+            min-width: 480px;
         }
 
         .git-section {
@@ -690,13 +761,32 @@
             display: flex;
             gap: var(--spacing-sm);
             margin-bottom: var(--spacing-md);
-            flex-wrap: wrap;
+            align-items: stretch;
+        }
+        
+        /* Make staging buttons equal width */
+        .staging-controls > .button-secondary,
+        .staging-controls > .file-selection-dropdown {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .staging-controls .button-secondary {
+            width: 100%;
         }
 
         /* File selection dropdown */
         .file-selection-dropdown {
             position: relative;
-            display: inline-block;
+            display: flex;
+            z-index: 1001; /* Ensure dropdown container has proper stacking context */
+            /* Ensure no transform affects absolute positioning */
+            transform: none;
+        }
+        
+        .file-selection-dropdown .button-secondary {
+            width: 100%;
+            position: relative; /* Ensure button has its own stacking context */
         }
 
         .file-list-dropdown {
@@ -706,6 +796,8 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            /* Ensure consistent positioning */
+            transform-origin: top left;
         }
 
         .file-list-header {
@@ -781,6 +873,23 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        
+        /* Staged file indicator */
+        .file-item.is-staged {
+            background: rgba(45, 74, 124, 0.15);
+            border-left: 3px solid var(--ocean-400);
+            padding-left: calc(var(--spacing-sm) - 3px);
+        }
+        
+        .file-item.is-staged::after {
+            content: 'staged';
+            font-size: 11px;
+            color: var(--ocean-400);
+            background: rgba(45, 74, 124, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: var(--spacing-sm);
+        }
 
         /* Commit message container adjustments */
         #commitMessageContainer {
@@ -836,20 +945,35 @@
         /* WIP Analysis Dropdown */
         .wip-analysis-dropdown {
             position: relative;
-            display: inline-block;
+            display: flex;
             z-index: 1000;
         }
 
         .dropdown-toggle {
             display: flex;
             align-items: center;
-            gap: var(--spacing-xs);
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+        
+        .dropdown-toggle > span {
+            pointer-events: none; /* Ensure clicks pass through to button */
+        }
+        
+        .dropdown-toggle > span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .dropdown-arrow {
             font-size: 0.8em;
             transition: transform 0.2s ease;
             margin-left: 4px;
+            line-height: 1;
+            pointer-events: none; /* Ensure clicks pass through to button */
         }
 
         .wip-analysis-dropdown.open .dropdown-arrow {
@@ -860,6 +984,7 @@
             position: absolute;
             top: 100%;
             left: 0;
+            right: auto;
             min-width: 280px;
             background: rgba(26, 29, 33, 0.95);
             border: 1px solid var(--color-border);
@@ -869,7 +994,7 @@
             opacity: 0;
             visibility: hidden;
             transform: translateY(-10px);
-            transition: all 0.2s ease;
+            transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
             margin-top: 4px;
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -1586,11 +1711,11 @@
                 
                 <div class="controls-group">
                     <button id="generateBtn" class="button">
-                        <span>Generate Summary</span>
+                        <span>🧠 Generate</span>
                     </button>
                     <div class="wip-analysis-dropdown">
                         <button id="analyzeWipBtn" class="button dropdown-toggle">
-                            <span>📝 Analyze WIP</span>
+                            <span>📝 Analyze</span>
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="dropdown-menu" id="wipDropdownMenu">
@@ -1604,6 +1729,9 @@
                             </div>
                         </div>
                     </div>
+                    <button id="sendToSlackBtn" class="button">
+                        <span>💬 Slack</span>
+                    </button>
                 </div>
             </div>
             
@@ -1621,14 +1749,14 @@
                     </button>
                     
                     <div class="file-selection-dropdown">
-                        <button id="selectFilesBtn" class="button-secondary dropdown-toggle">
+                        <button id="selectFilesBtn" class="button-secondary dropdown-toggle" type="button">
                             <span>📁 Select Files</span>
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="dropdown-menu file-list-dropdown" id="fileListDropdown">
                             <div class="file-list-header">
-                                <span>Select files to stage:</span>
-                                <button id="stageSelectedBtn" class="button-small">Stage Selected</button>
+                                <span>Select files to stage/unstage:</span>
+                                <button id="stageSelectedBtn" class="button-small">Apply Changes</button>
                             </div>
                             <div class="file-list-content" id="fileListContent">
                                 <!-- Files will be populated here -->
@@ -2336,7 +2464,7 @@
         async function generateSummary() {
             try {
                 generateBtn.disabled = true;
-                generateBtn.textContent = 'Generating...';
+                generateBtn.innerHTML = '<span>⏳ Working...</span>';
                 
                 // Show loading skeletons
                 showSkeleton(leftPanelOutput);
@@ -2365,7 +2493,7 @@
                 loadLatestFiles(); // Restore previous content
             } finally {
                 generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Summary';
+                generateBtn.innerHTML = '<span>🧠 Generate</span>';
             }
         }
 
@@ -2395,6 +2523,40 @@
             }
         }
 
+        // Adjust dropdown position to prevent viewport overflow
+        function adjustDropdownPosition(dropdown) {
+            // Reset any previous position adjustments
+            dropdown.style.left = '0';
+            dropdown.style.right = 'auto';
+            dropdown.style.bottom = 'auto';
+            dropdown.style.top = '100%';
+            dropdown.style.marginBottom = '0';
+            dropdown.style.marginTop = '4px';
+            
+            // Force a reflow to get accurate measurements
+            dropdown.offsetHeight;
+            
+            const rect = dropdown.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // Only adjust if dropdown would overflow the viewport
+            if (rect.right > viewportWidth - 10) {
+                // Position from right edge of button instead
+                dropdown.style.left = 'auto';
+                dropdown.style.right = '0';
+            }
+            
+            // Check vertical overflow
+            if (rect.bottom > viewportHeight - 10) {
+                // Position above the button instead
+                dropdown.style.top = 'auto';
+                dropdown.style.bottom = '100%';
+                dropdown.style.marginBottom = '4px';
+                dropdown.style.marginTop = '0';
+            }
+        }
+        
         // Update the file list dropdown
         function updateFileList() {
             fileListContent.innerHTML = '';
@@ -2417,7 +2579,9 @@
                 // Check if file is already staged
                 if (file.status[0] !== ' ' && file.status[0] !== '?') {
                     checkbox.checked = true;
-                    checkbox.disabled = true;
+                    // Remove the disabled state to allow unstaging
+                    // checkbox.disabled = true;
+                    fileItem.classList.add('is-staged');
                 }
                 
                 const statusSpan = document.createElement('span');
@@ -2452,29 +2616,59 @@
             });
         }
 
-        // Stage selected files
+        // Stage/unstage selected files
         async function stageSelectedFiles() {
-            const checkboxes = fileListContent.querySelectorAll('.file-checkbox:not(:disabled):checked');
-            const filesToStage = Array.from(checkboxes).map(cb => cb.dataset.path);
+            const allCheckboxes = fileListContent.querySelectorAll('.file-checkbox');
+            const filesToStage = [];
+            const filesToUnstage = [];
             
-            if (filesToStage.length === 0) {
-                showStatus('No files selected', 'error');
+            allCheckboxes.forEach(checkbox => {
+                const fileItem = checkbox.closest('.file-item');
+                const isStaged = fileItem.classList.contains('is-staged');
+                
+                if (isStaged && !checkbox.checked) {
+                    // File was staged but is now unchecked - unstage it
+                    filesToUnstage.push(checkbox.dataset.path);
+                } else if (!isStaged && checkbox.checked) {
+                    // File was not staged but is now checked - stage it
+                    filesToStage.push(checkbox.dataset.path);
+                }
+            });
+            
+            if (filesToStage.length === 0 && filesToUnstage.length === 0) {
+                showStatus('No changes to apply', 'info');
                 return;
             }
             
             try {
-                showStatus(`Staging ${filesToStage.length} file(s)...`, 'info');
-                const result = await window.electronAPI.git.add(filesToStage);
-                
-                if (result.success) {
-                    showStatus(`Successfully staged ${filesToStage.length} file(s)`, 'success');
-                    await updateGitStatus();
-                    fileListDropdown.classList.remove('show');
-                } else {
-                    showStatus(`Staging failed: ${result.error}`, 'error');
+                // Stage files
+                if (filesToStage.length > 0) {
+                    showStatus(`Staging ${filesToStage.length} file(s)...`, 'info');
+                    const result = await window.electronAPI.git.add(filesToStage);
+                    
+                    if (!result.success) {
+                        showStatus(`Staging failed: ${result.error}`, 'error');
+                        return;
+                    }
                 }
+                
+                // Unstage files
+                if (filesToUnstage.length > 0) {
+                    showStatus(`Unstaging ${filesToUnstage.length} file(s)...`, 'info');
+                    const result = await window.electronAPI.git.reset(filesToUnstage);
+                    
+                    if (!result.success) {
+                        showStatus(`Unstaging failed: ${result.error}`, 'error');
+                        return;
+                    }
+                }
+                
+                const totalChanges = filesToStage.length + filesToUnstage.length;
+                showStatus(`Successfully updated ${totalChanges} file(s)`, 'success');
+                await updateGitStatus();
+                fileListDropdown.classList.remove('show');
             } catch (error) {
-                showStatus(`Error staging files: ${error.message}`, 'error');
+                showStatus(`Error updating files: ${error.message}`, 'error');
             }
         }
 
@@ -2580,8 +2774,7 @@
         async function analyzeWip(mode) {
             try {
                 analyzeWipBtn.disabled = true;
-                const modeText = mode === 'all' ? 'All Changes' : 'Staged Changes';
-                analyzeWipBtn.textContent = `Analyzing ${modeText}...`;
+                analyzeWipBtn.innerHTML = '<span>⏳ Working...</span><span class="dropdown-arrow">▼</span>';
                 
                 // Show loading skeletons
                 showSkeleton(leftPanelOutput);
@@ -2590,6 +2783,7 @@
                 const result = await window.electronAPI.analyzeWip(mode);
                 
                 if (result.success) {
+                    const modeText = mode === 'all' ? 'All Changes' : 'Staged Changes';
                     showStatus(`WIP analysis (${modeText}) completed successfully!`, 'success');
                     
                     // Poll for new files after a delay
@@ -2610,7 +2804,7 @@
                 loadLatestFiles(); // Restore previous content
             } finally {
                 analyzeWipBtn.disabled = false;
-                analyzeWipBtn.innerHTML = '<span>📝 Analyze WIP</span><span class="dropdown-arrow">▼</span>';
+                analyzeWipBtn.innerHTML = '<span>📝 Analyze</span><span class="dropdown-arrow">▼</span>';
             }
         }
 
@@ -3095,6 +3289,36 @@
         // Event listeners
         generateBtn.addEventListener('click', generateSummary);
         
+        // Send to Slack button
+        const sendToSlackBtn = document.getElementById('sendToSlackBtn');
+        sendToSlackBtn.addEventListener('click', async () => {
+            try {
+                // Check if Slack is configured
+                if (!globalSettings.slackEnabled || !globalSettings.slackToken) {
+                    showStatus('Slack is not configured. Please enable it in Settings.', 'error');
+                    return;
+                }
+                
+                sendToSlackBtn.disabled = true;
+                sendToSlackBtn.innerHTML = '<span>⏳ Sending...</span>';
+                showStatus('Gathering project status...', 'info');
+                
+                // Send progress update
+                const result = await window.electronAPI.slack.sendProgressUpdate();
+                
+                if (result.success) {
+                    showStatus('Progress update sent to Slack!', 'success');
+                } else {
+                    showStatus(`Failed to send: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                sendToSlackBtn.disabled = false;
+                sendToSlackBtn.innerHTML = '<span>💬 Slack</span>';
+            }
+        });
+        
         // Document type selector events
         leftPanelType.addEventListener('change', async (e) => {
             leftPanelHistory.value = 'latest';
@@ -3431,12 +3655,20 @@
         
         // File selection dropdown toggle
         selectFilesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
+            
+            const wasOpen = fileListDropdown.classList.contains('show');
             fileListDropdown.classList.toggle('show');
             
-            // Update file list when opening dropdown
-            if (fileListDropdown.classList.contains('show')) {
+            // Update file list and position when opening dropdown
+            if (!wasOpen && fileListDropdown.classList.contains('show')) {
                 updateFileList();
+                
+                // Use setTimeout to ensure dropdown is rendered before positioning
+                setTimeout(() => {
+                    adjustDropdownPosition(fileListDropdown);
+                }, 0);
             }
         });
         

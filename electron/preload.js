@@ -97,6 +97,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   git: {
     status: () => ipcRenderer.invoke('git:status'),
     add: (files) => ipcRenderer.invoke('git:add', files),
+    reset: (files) => ipcRenderer.invoke('git:reset', files),
     generateCommitMessage: () => ipcRenderer.invoke('git:generate-commit-message'),
     commit: (message) => ipcRenderer.invoke('git:commit', message),
     push: () => ipcRenderer.invoke('git:push'),
@@ -115,6 +116,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   slack: {
     test: (token, channel) => ipcRenderer.invoke('slack:test', token, channel),
     sendSummary: (summaryData) => ipcRenderer.invoke('slack:send-summary', summaryData),
-    testSummary: () => ipcRenderer.invoke('slack:test-summary')
+    testSummary: () => ipcRenderer.invoke('slack:test-summary'),
+    sendProgressUpdate: () => ipcRenderer.invoke('slack:send-progress-update')
   }
 }); 

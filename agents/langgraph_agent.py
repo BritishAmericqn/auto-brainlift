@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import logging
+import hashlib
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -238,10 +239,13 @@ class GitCommitSummarizer:
                 if wip_mode == "all":
                     # All changes (staged + unstaged)
                     diff = repo.git.diff('HEAD')
+                    staged_diff = repo.git.diff('--cached')
+                    combined_diff = f"{staged_diff}\n{diff}" if staged_diff or diff else "no-changes"
                     mode_description = "All working directory changes"
                 elif wip_mode == "staged":
                     # Only staged changes
                     diff = repo.git.diff('--cached')
+                    combined_diff = diff if diff else "no-changes"
                     mode_description = "Staged changes only"
                 else:
                     raise ValueError(f"Unknown WIP mode: {wip_mode}")
@@ -253,10 +257,14 @@ class GitCommitSummarizer:
                     else:
                         diff = "No staged changes"
                 
+                # Generate deterministic hash for cache key
+                diff_hash = hashlib.sha256(combined_diff.encode()).hexdigest()[:16]
+                commit_hash = f"wip_{wip_mode}:{diff_hash}"
+                
                 # Create WIP info (no actual commit)
                 timestamp = datetime.now()
                 wip_info = {
-                    "commit_hash": f"wip_{wip_mode}_{timestamp.strftime('%Y%m%d_%H%M%S')}",
+                    "commit_hash": commit_hash,  # Use deterministic hash
                     "commit_hash_display": f"WIP Analysis: {mode_description}",
                     "commit_message": f"Work in Progress - {mode_description}",
                     "commit_author": f"Current User",
@@ -265,7 +273,7 @@ class GitCommitSummarizer:
                 }
                 
                 state.update(wip_info)
-                logger.info(f"Parsed WIP changes: {wip_mode} mode")
+                logger.info(f"Parsed WIP changes: {wip_mode} mode with hash {commit_hash}")
                 
             else:
                 # Original commit-based parsing
@@ -868,10 +876,28 @@ class GitCommitSummarizer:
                 
                 if cached is not None:
                     logger.info(f"Quick cache hit for commit {commit.hexsha[:8]}")
-                    # Return early with cached data
+                    # Even with cache hit, we need to write new files
+                    # so they appear in the dropdown with current timestamps
+                    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    
+                    # Write cached context
+                    context_path = self.context_dir / f"{timestamp}_context.md"
+                    with open(context_path, 'w') as f:
+                        f.write(cached.get('context_summary', ''))
+                    
+                    # Write cached brainlift
+                    brainlift_path = self.output_dir / f"{timestamp}_brainlift.md"
+                    with open(brainlift_path, 'w') as f:
+                        f.write(cached.get('brainlift_summary', ''))
+                    
+                    output_files = {
+                        'context': str(context_path),
+                        'brainlift': str(brainlift_path)
+                    }
+                    
                     return {
                         'cache_hit': True,
-                        'output_files': cached.get('output_files', {}),
+                        'output_files': output_files,
                         'context_summary': cached.get('context_summary', ''),
                         'brainlift_summary': cached.get('brainlift_summary', ''),
                         'budget_check': {
@@ -907,65 +933,8 @@ class GitCommitSummarizer:
         initial_state = {"wip_mode": mode}
         
         try:
-            # Create cache key based on WIP mode and current working directory state
-            if self.cache_manager:
-                repo = git.Repo(self.base_dir)
-                
-                # Get current working directory state for cache key
-                if mode == 'all':
-                    # For 'all' mode, include both staged and unstaged changes
-                    try:
-                        # Get a hash of the current working directory state
-                        diff_output = repo.git.diff('HEAD')
-                        if not diff_output:
-                            diff_output = "no-changes"
-                        cache_key = f"wip_all:{hash(diff_output)}"
-                    except:
-                        cache_key = f"wip_all:timestamp:{datetime.now().isoformat()}"
-                else:
-                    # For 'staged' mode, only staged changes
-                    try:
-                        diff_output = repo.git.diff('--cached')
-                        if not diff_output:
-                            diff_output = "no-changes"
-                        cache_key = f"wip_staged:{hash(diff_output)}"
-                    except:
-                        cache_key = f"wip_staged:timestamp:{datetime.now().isoformat()}"
-                
-                # Check cache first
-                cached = self.cache_manager.exact_cache.get(cache_key)
-                if cached is not None:
-                    logger.info(f"Quick cache hit for WIP analysis ({mode})")
-                    return {
-                        'cache_hit': True,
-                        'output_files': cached.get('output_files', {}),
-                        'context_summary': cached.get('context_summary', ''),
-                        'brainlift_summary': cached.get('brainlift_summary', ''),
-                        'budget_check': {
-                            'estimated_tokens': 0,
-                            'estimated_cost': 0.0
-                        }
-                    }
-                
-                # Store cache key in state for later use
-                initial_state["cache_key"] = cache_key
-            
-            # Run the full workflow
+            # Run the workflow - the parse_git_diff will generate a deterministic cache key
             result = self.graph.invoke(initial_state)
-            
-            # Cache the result if cache manager is available
-            if self.cache_manager and result.get('output_files') and initial_state.get('cache_key'):
-                cache_data = {
-                    'output_files': result['output_files'],
-                    'context_summary': result.get('context_summary', ''),
-                    'brainlift_summary': result.get('brainlift_summary', ''),
-                    'multi_agent_results': result.get('multi_agent_results', {})
-                }
-                self.cache_manager.exact_cache.set(
-                    initial_state['cache_key'],
-                    cache_data,
-                    ttl=3600  # 1 hour for WIP cache (shorter than commits)
-                )
             
             logger.info(f"Successfully processed WIP analysis ({mode})")
             return result

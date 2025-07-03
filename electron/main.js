@@ -1,10 +1,14 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
+const { promisify } = require('util');
 const fs = require('fs');
 const { dialog } = require('electron');
 const ProjectManager = require('./projectManager');
 const SlackIntegration = require('../integrations/slack');
+
+// Promisify exec for async/await
+const execAsync = promisify(exec);
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -1022,6 +1026,43 @@ ipcMain.handle('git:add', async (event, files = ['.']) => {
   }
 });
 
+// Git reset (unstage) handler
+ipcMain.handle('git:reset', async (event, files = []) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+
+    // If files is empty, reset all staged files
+    const args = ['reset', 'HEAD'];
+    if (files.length > 0) {
+      args.push('--', ...files);
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', args, {
+        cwd: currentProject.path
+      });
+      
+      let output = '';
+      gitProcess.stdout.on('data', (data) => output += data.toString());
+      gitProcess.stderr.on('data', (data) => output += data.toString());
+      gitProcess.on('close', (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(`Git reset failed: ${output}`));
+      });
+      gitProcess.on('error', (err) => reject(err));
+    });
+
+    logToFile(`Git reset successful: ${files.length > 0 ? files.join(', ') : 'all files'}`);
+    return { success: true, output: result };
+  } catch (error) {
+    logToFile(`Git reset error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
 // Style Guide Integration - Phase 2
 ipcMain.handle('style-guide:upload', async (event, filePath, options = {}) => {
   try {
@@ -1366,6 +1407,156 @@ ipcMain.handle('slack:test-summary', async () => {
     return result;
   } catch (error) {
     logToFile(`Test Slack summary error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// Send progress update to Slack
+ipcMain.handle('slack:send-progress-update', async () => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    const globalSettings = await projectManager.getGlobalSettings();
+    
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+    
+    // Check if Slack is configured
+    if (!globalSettings.slackEnabled || !globalSettings.slackToken) {
+      return { success: false, error: 'Slack not configured' };
+    }
+    
+    logToFile(`Gathering progress update for project: ${currentProject.name}`);
+    
+    // Gather current work status
+    const progressData = {
+      currentWork: [],
+      progressMade: [],
+      codeChanges: [],
+      issues: [],
+      hasCommitted: false,
+      branch: 'unknown',
+      gitStats: { filesChanged: 0, linesAdded: 0, linesDeleted: 0 }
+    };
+    
+    try {
+      // Get current branch
+      const branchResult = await execAsync('git rev-parse --abbrev-ref HEAD', { 
+        cwd: currentProject.path 
+      });
+      progressData.branch = branchResult.stdout.trim();
+      
+      // Check if there are uncommitted changes
+      const statusResult = await execAsync('git status --porcelain', { 
+        cwd: currentProject.path 
+      });
+      progressData.hasCommitted = statusResult.stdout.trim() === '';
+      
+      // Get git stats for uncommitted changes
+      if (!progressData.hasCommitted) {
+        const diffStatResult = await execAsync('git diff --shortstat', {
+          cwd: currentProject.path
+        });
+        const statsMatch = diffStatResult.stdout.match(/(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?/);
+        if (statsMatch) {
+          progressData.gitStats.filesChanged = parseInt(statsMatch[1]) || 0;
+          progressData.gitStats.linesAdded = parseInt(statsMatch[2]) || 0;
+          progressData.gitStats.linesDeleted = parseInt(statsMatch[3]) || 0;
+        }
+        
+        // Get list of modified files
+        const filesResult = await execAsync('git diff --name-status', {
+          cwd: currentProject.path
+        });
+        const files = filesResult.stdout.trim().split('\n').filter(line => line);
+        files.forEach(file => {
+          const [status, filename] = file.split('\t');
+          const action = status === 'M' ? 'Modified' : status === 'A' ? 'Added' : status === 'D' ? 'Deleted' : 'Changed';
+          progressData.codeChanges.push(`${action}: ${filename}`);
+        });
+      }
+      
+      // Get recent commits (last 5)
+      const logResult = await execAsync('git log --oneline -5', {
+        cwd: currentProject.path
+      });
+      const commits = logResult.stdout.trim().split('\n').filter(line => line);
+      commits.forEach((commit, index) => {
+        if (index === 0) {
+          progressData.progressMade.push(`Latest commit: ${commit}`);
+        }
+      });
+      
+    } catch (gitError) {
+      logToFile(`Git command error: ${gitError.message}`);
+      progressData.branch = 'N/A';
+    }
+    
+    // Read latest context log and brainlift for work context
+    try {
+      const contextDir = path.join(currentProject.path, 'context_logs');
+      const contextFile = await getLatestFile(contextDir);
+      
+      if (contextFile) {
+        // Extract work items from context
+        const contextLines = contextFile.content.split('\n');
+        const workSection = contextLines.findIndex(line => line.includes('Development Summary'));
+        if (workSection !== -1) {
+          for (let i = workSection + 1; i < Math.min(workSection + 10, contextLines.length); i++) {
+            const line = contextLines[i].trim();
+            if (line && !line.startsWith('#') && line.length > 10) {
+              progressData.currentWork.push(line);
+              if (progressData.currentWork.length >= 3) break;
+            }
+          }
+        }
+      }
+      
+      // Check for issues in error logs
+      const errorDir = path.join(currentProject.path, 'error_logs');
+      const errorFile = await getLatestFile(errorDir);
+      
+      if (errorFile) {
+        const errorLines = errorFile.content.split('\n');
+        const highSeverityIssues = errorLines.filter(line => 
+          line.includes('High:') || line.includes('Critical:')
+        );
+        
+        highSeverityIssues.slice(0, 3).forEach(issue => {
+          progressData.issues.push(issue.trim());
+        });
+      }
+      
+    } catch (readError) {
+      logToFile(`Error reading project files: ${readError.message}`);
+    }
+    
+    // Add default messages if no data
+    if (progressData.currentWork.length === 0) {
+      progressData.currentWork.push('Working on project updates');
+    }
+    
+    if (progressData.progressMade.length === 0 && !progressData.hasCommitted) {
+      progressData.progressMade.push('Making changes to the codebase');
+    }
+    
+    // Send to Slack
+    const slack = new SlackIntegration(globalSettings.slackToken, {
+      channel: globalSettings.slackChannel || '#dev-updates'
+    });
+    
+    logToFile(`Sending progress update to Slack for project: ${currentProject.name}`);
+    const result = await slack.sendProgressUpdate(progressData, currentProject.name);
+    
+    if (result.success) {
+      logToFile(`Progress update sent successfully`);
+    } else {
+      logToFile(`Failed to send progress update: ${result.error}`);
+    }
+    
+    return result;
+  } catch (error) {
+    logToFile(`Progress update error: ${error.message}`);
     return { success: false, error: error.message };
   }
 });
