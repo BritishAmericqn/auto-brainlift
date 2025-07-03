@@ -1641,6 +1641,48 @@
                     </div>
                 </div>
                 
+                <h3>Slack Integration</h3>
+                
+                <div class="form-group">
+                    <label>Enable Slack Notifications</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="slackEnabled" name="slackEnabled">
+                        <label for="slackEnabled">Send brainlift summaries to Slack</label>
+                    </div>
+                    <div class="help-text">
+                        Get real-time notifications when brainlifts are generated
+                    </div>
+                </div>
+                
+                <div class="form-group" id="slackSettings" style="display: none;">
+                    <label for="slackToken">Bot Token</label>
+                    <input type="password" id="slackToken" name="slackToken" placeholder="xoxb-your-bot-token">
+                    <div class="help-text">Get your bot token from <a href="https://api.slack.com/apps" target="_blank">api.slack.com/apps</a></div>
+                </div>
+                
+                <div class="form-group" id="slackChannelGroup" style="display: none;">
+                    <label for="slackChannel">Channel</label>
+                    <input type="text" id="slackChannel" name="slackChannel" placeholder="#dev-updates" value="#dev-updates">
+                    <div class="help-text">Channel where notifications will be posted</div>
+                </div>
+                
+                <div class="form-group" id="slackNotificationRules" style="display: none;">
+                    <label for="slackNotificationRule">Notification Rules</label>
+                    <select id="slackNotificationRule" name="slackNotificationRule">
+                        <option value="all">All - Send notification for every brainlift</option>
+                        <option value="issues">Issues Only - Send only when issues are found</option>
+                        <option value="critical">Critical Only - Send only when score is below 70</option>
+                    </select>
+                    <div class="help-text">Choose when to receive Slack notifications</div>
+                </div>
+                
+                <div class="form-group" id="slackTest" style="display: none;">
+                    <button type="button" id="testSlackBtn" class="button-secondary">
+                        <span>🧪 Test Connection</span>
+                    </button>
+                    <div id="slackTestResult" class="help-text" style="margin-top: var(--spacing-sm);"></div>
+                </div>
+                
                 <div class="form-group">
                     <button type="submit" class="button">Save Settings</button>
                 </div>
@@ -2206,6 +2248,26 @@
                 document.getElementById('styleGuideUpload').style.display = 'none';
                 document.getElementById('styleGuidePreview').style.display = 'none';
             }
+            
+            // Slack settings
+            const slackEnabledEl = document.getElementById('slackEnabled');
+            slackEnabledEl.checked = globalSettings.slackEnabled || false;
+            document.getElementById('slackToken').value = globalSettings.slackToken || '';
+            document.getElementById('slackChannel').value = globalSettings.slackChannel || '#dev-updates';
+            document.getElementById('slackNotificationRule').value = globalSettings.slackNotificationRule || 'all';
+            
+            // Show/hide Slack sections based on enabled state
+            if (slackEnabledEl.checked) {
+                document.getElementById('slackSettings').style.display = 'block';
+                document.getElementById('slackChannelGroup').style.display = 'block';
+                document.getElementById('slackNotificationRules').style.display = 'block';
+                document.getElementById('slackTest').style.display = 'block';
+            } else {
+                document.getElementById('slackSettings').style.display = 'none';
+                document.getElementById('slackChannelGroup').style.display = 'none';
+                document.getElementById('slackNotificationRules').style.display = 'none';
+                document.getElementById('slackTest').style.display = 'none';
+            }
                 
             // Update cost preview
             updateAgentCostPreview();
@@ -2256,7 +2318,12 @@
                 cursorRulesType: document.getElementById('cursorRulesType').value,
                 // Style Guide settings
                 styleGuideEnabled: document.getElementById('styleGuideEnabled').checked,
-                styleGuidePermanent: document.getElementById('styleGuidePermanent').checked
+                styleGuidePermanent: document.getElementById('styleGuidePermanent').checked,
+                // Slack settings
+                slackEnabled: document.getElementById('slackEnabled').checked,
+                slackToken: document.getElementById('slackToken').value,
+                slackChannel: document.getElementById('slackChannel').value,
+                slackNotificationRule: document.getElementById('slackNotificationRule').value
             };
             
             try {
@@ -2614,6 +2681,72 @@
             } catch (error) {
                 selectedFileName.textContent = 'Upload failed';
                 showStatus(`Error: ${error.message}`, 'error');
+            }
+        });
+        
+        // Slack event listeners
+        const slackEnabled = document.getElementById('slackEnabled');
+        const slackSettings = document.getElementById('slackSettings');
+        const slackChannelGroup = document.getElementById('slackChannelGroup');
+        const slackNotificationRules = document.getElementById('slackNotificationRules');
+        const slackTest = document.getElementById('slackTest');
+        const testSlackBtn = document.getElementById('testSlackBtn');
+        const slackTestResult = document.getElementById('slackTestResult');
+        
+        // Toggle Slack sections
+        slackEnabled.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                slackSettings.style.display = 'block';
+                slackChannelGroup.style.display = 'block';
+                slackNotificationRules.style.display = 'block';
+                slackTest.style.display = 'block';
+            } else {
+                slackSettings.style.display = 'none';
+                slackChannelGroup.style.display = 'none';
+                slackNotificationRules.style.display = 'none';
+                slackTest.style.display = 'none';
+                slackTestResult.textContent = '';
+            }
+        });
+        
+        // Test Slack connection
+        testSlackBtn.addEventListener('click', async () => {
+            const token = document.getElementById('slackToken').value;
+            const channel = document.getElementById('slackChannel').value;
+            
+            if (!token) {
+                slackTestResult.textContent = '❌ Please enter a bot token';
+                slackTestResult.style.color = 'var(--color-error)';
+                return;
+            }
+            
+            if (!channel) {
+                slackTestResult.textContent = '❌ Please enter a channel';
+                slackTestResult.style.color = 'var(--color-error)';
+                return;
+            }
+            
+            try {
+                testSlackBtn.disabled = true;
+                testSlackBtn.textContent = '🔄 Testing...';
+                slackTestResult.textContent = 'Testing connection...';
+                slackTestResult.style.color = 'var(--color-text-secondary)';
+                
+                const result = await window.electronAPI.slack.test(token, channel);
+                
+                if (result.success) {
+                    slackTestResult.textContent = `✅ Connected to ${result.team} as ${result.user}`;
+                    slackTestResult.style.color = 'var(--color-success)';
+                } else {
+                    slackTestResult.textContent = `❌ Connection failed: ${result.error}`;
+                    slackTestResult.style.color = 'var(--color-error)';
+                }
+            } catch (error) {
+                slackTestResult.textContent = `❌ Error: ${error.message}`;
+                slackTestResult.style.color = 'var(--color-error)';
+            } finally {
+                testSlackBtn.disabled = false;
+                testSlackBtn.innerHTML = '<span>🧪 Test Connection</span>';
             }
         });
         

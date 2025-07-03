@@ -105,5 +105,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     preview: () => ipcRenderer.invoke('style-guide:preview'),
     apply: () => ipcRenderer.invoke('style-guide:apply'),
     getStatus: () => ipcRenderer.invoke('style-guide:get-status')
+  },
+
+  // Slack API
+  slack: {
+    test: (token, channel) => ipcRenderer.invoke('slack:test', token, channel),
+    sendSummary: (summaryData) => ipcRenderer.invoke('slack:send-summary', summaryData)
   }
 }); 

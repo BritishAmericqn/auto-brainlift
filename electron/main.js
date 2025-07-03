@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const { dialog } = require('electron');
 const ProjectManager = require('./projectManager');
+const SlackIntegration = require('../integrations/slack');
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -189,13 +190,39 @@ ipcMain.handle('generate-summary', async (event, commitHash) => {
         logToFile(`Python stderr: ${data.toString().trim()}`);
       });
       
-      pythonProcess.on('close', (code) => {
+      pythonProcess.on('close', async (code) => {
         if (code === 0) {
           // Send progress update
           mainWindow.webContents.send('summary-progress', {
             status: 'complete',
             message: 'Summary generation completed'
           });
+          
+          // Check if Slack notifications are enabled
+          if (globalSettings.slackEnabled) {
+            try {
+              // Get the latest brainlift file
+              const paths = projectManager.getProjectOutputPaths(currentProject.id);
+              const latestBrainlift = await getLatestFile(paths.brainlifts);
+              
+              if (latestBrainlift) {
+                // Parse brainlift content to extract scores and issues
+                const brainliftContent = latestBrainlift.content;
+                const summaryData = parseBrainliftContent(brainliftContent);
+                
+                // Send to Slack
+                const slackResult = await sendSlackNotification(summaryData, currentProject.name, globalSettings);
+                if (slackResult.success) {
+                  logToFile('Slack notification sent successfully');
+                } else {
+                  logToFile(`Failed to send Slack notification: ${slackResult.error}`);
+                }
+              }
+            } catch (error) {
+              logToFile(`Error sending Slack notification: ${error.message}`);
+              // Don't fail the brainlift generation if Slack fails
+            }
+          }
           
           resolve({
             success: true,
@@ -1015,6 +1042,72 @@ ipcMain.handle('style-guide:upload', async (event, filePath, options = {}) => {
   }
 });
 
+// Slack Integration - Phase 3
+ipcMain.handle('slack:test', async (event, token, channel) => {
+  try {
+    logToFile(`Testing Slack connection with channel: ${channel}`);
+    
+    const slack = new SlackIntegration(token, { channel: channel });
+    const result = await slack.testConnection();
+    
+    if (result.success) {
+      logToFile(`Slack connection test successful: ${result.team} / ${result.user}`);
+    } else {
+      logToFile(`Slack connection test failed: ${result.error}`);
+    }
+    
+    return result;
+  } catch (error) {
+    logToFile(`Slack test error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('slack:send-summary', async (event, summaryData) => {
+  try {
+    const currentProject = projectManager.getCurrentProject();
+    const globalSettings = await projectManager.getGlobalSettings();
+    
+    if (!currentProject) {
+      return { success: false, error: 'No project selected' };
+    }
+    
+    if (!globalSettings.slackEnabled || !globalSettings.slackToken) {
+      return { success: false, error: 'Slack not configured' };
+    }
+    
+    // Check notification rules
+    const notificationRule = globalSettings.slackNotificationRule || 'all';
+    if (notificationRule === 'issues' && (!summaryData.criticalIssues || summaryData.criticalIssues.length === 0)) {
+      logToFile('Skipping Slack notification: No issues found and rule is "issues only"');
+      return { success: true, message: 'No notification sent (no issues found)' };
+    }
+    
+    if (notificationRule === 'critical' && summaryData.overallScore >= 70) {
+      logToFile('Skipping Slack notification: Score is acceptable and rule is "critical only"');
+      return { success: true, message: 'No notification sent (score is acceptable)' };
+    }
+    
+    const slack = new SlackIntegration(globalSettings.slackToken, {
+      channel: globalSettings.slackChannel || '#dev-updates'
+    });
+    
+    logToFile(`Sending Slack summary for project: ${currentProject.name}`);
+    const result = await slack.sendBrainliftSummary(summaryData, currentProject.name);
+    
+    if (result.success) {
+      logToFile(`Slack summary sent successfully to channel: ${result.channel}`);
+    } else {
+      logToFile(`Failed to send Slack summary: ${result.error}`);
+    }
+    
+    return result;
+  } catch (error) {
+    logToFile(`Slack send error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
 // Helper function to get the latest file from a directory
 async function getLatestFile(dirPath) {
   try {
@@ -1105,6 +1198,94 @@ function logToFile(message) {
   // Also log to console in development
   if (process.env.NODE_ENV === 'development') {
     console.log(logMessage.trim());
+  }
+}
+
+// Parse brainlift content to extract scores and issues
+function parseBrainliftContent(content) {
+  const data = {
+    overallScore: 0,
+    securityScore: 0,
+    qualityScore: 0,
+    commitInfo: {
+      hash: '',
+      message: ''
+    },
+    criticalIssues: []
+  };
+  
+  try {
+    // Extract overall score
+    const overallScoreMatch = content.match(/Overall\s+Score[:\s]+(\d+)/i);
+    if (overallScoreMatch) {
+      data.overallScore = parseInt(overallScoreMatch[1]);
+    }
+    
+    // Extract security score
+    const securityScoreMatch = content.match(/Security\s+Score[:\s]+(\d+)/i);
+    if (securityScoreMatch) {
+      data.securityScore = parseInt(securityScoreMatch[1]);
+    }
+    
+    // Extract quality score
+    const qualityScoreMatch = content.match(/Quality\s+Score[:\s]+(\d+)/i);
+    if (qualityScoreMatch) {
+      data.qualityScore = parseInt(qualityScoreMatch[1]);
+    }
+    
+    // Extract commit info
+    const commitHashMatch = content.match(/Commit[:\s]+([a-f0-9]{7,40})/i);
+    if (commitHashMatch) {
+      data.commitInfo.hash = commitHashMatch[1];
+    }
+    
+    const commitMessageMatch = content.match(/Commit\s+Message[:\s]+(.+)/i);
+    if (commitMessageMatch) {
+      data.commitInfo.message = commitMessageMatch[1].trim();
+    }
+    
+    // Extract critical issues (look for sections with critical/high severity)
+    const criticalSectionMatch = content.match(/Critical\s+Issues[\s\S]*?(?=\n## |\n# |$)/i);
+    if (criticalSectionMatch) {
+      const issueMatches = criticalSectionMatch[0].match(/[-•]\s+(.+)/g);
+      if (issueMatches) {
+        data.criticalIssues = issueMatches.map(issue => issue.replace(/^[-•]\s+/, '').trim());
+      }
+    }
+    
+    // Also check for high severity issues in error logs
+    const errorLogMatch = content.match(/Error\s+Log[\s\S]*?(?=\n## |\n# |$)/i);
+    if (errorLogMatch) {
+      const highSeverityMatches = errorLogMatch[0].match(/(?:High|Critical)[\s\S]*?[-•]\s+(.+)/gi);
+      if (highSeverityMatches) {
+        highSeverityMatches.forEach(match => {
+          const issueMatch = match.match(/[-•]\s+(.+)/);
+          if (issueMatch) {
+            data.criticalIssues.push(issueMatch[1].trim());
+          }
+        });
+      }
+    }
+    
+    // Deduplicate issues
+    data.criticalIssues = [...new Set(data.criticalIssues)];
+    
+  } catch (error) {
+    logToFile(`Error parsing brainlift content: ${error.message}`);
+  }
+  
+  return data;
+}
+
+// Send Slack notification with brainlift summary
+async function sendSlackNotification(summaryData, projectName, globalSettings) {
+  try {
+    // Use the existing slack:send-summary handler to ensure consistency
+    const event = {}; // Mock event object
+    const result = await ipcMain._handlers.get('slack:send-summary')(event, summaryData);
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 }
 
