@@ -223,42 +223,81 @@ class GitCommitSummarizer:
         return workflow.compile()
     
     def parse_git_diff(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Parse Git commit information and diff"""
+        """Parse Git commit information and diff, or WIP changes"""
         logger.info("Parsing Git diff...")
         
         try:
-            # Get commit info from state or fetch latest
-            if "commit_hash" in state:
-                commit_hash = state["commit_hash"]
-            else:
-                # Get latest commit from current repo
-                repo = git.Repo(self.base_dir)
-                commit = repo.head.commit
-                commit_hash = str(commit.hexsha)
-            
-            # Get commit details
             repo = git.Repo(self.base_dir)
-            commit = repo.commit(commit_hash)
             
-            # Get diff
-            if commit.parents:
-                diff = repo.git.diff(commit.parents[0].hexsha, commit.hexsha)
+            # Check if this is WIP analysis
+            if state.get("wip_mode"):
+                wip_mode = state["wip_mode"]
+                logger.info(f"Processing WIP analysis mode: {wip_mode}")
+                
+                # Get WIP diff based on mode
+                if wip_mode == "all":
+                    # All changes (staged + unstaged)
+                    diff = repo.git.diff('HEAD')
+                    mode_description = "All working directory changes"
+                elif wip_mode == "staged":
+                    # Only staged changes
+                    diff = repo.git.diff('--cached')
+                    mode_description = "Staged changes only"
+                else:
+                    raise ValueError(f"Unknown WIP mode: {wip_mode}")
+                
+                if not diff.strip():
+                    # No changes found
+                    if wip_mode == "all":
+                        diff = "No changes in working directory"
+                    else:
+                        diff = "No staged changes"
+                
+                # Create WIP info (no actual commit)
+                timestamp = datetime.now()
+                wip_info = {
+                    "commit_hash": f"wip_{wip_mode}_{timestamp.strftime('%Y%m%d_%H%M%S')}",
+                    "commit_hash_display": f"WIP Analysis: {mode_description}",
+                    "commit_message": f"Work in Progress - {mode_description}",
+                    "commit_author": f"Current User",
+                    "commit_date": f"Analysis Date: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
+                    "git_diff": diff[:5000]  # Limit diff size
+                }
+                
+                state.update(wip_info)
+                logger.info(f"Parsed WIP changes: {wip_mode} mode")
+                
             else:
-                # First commit
-                diff = repo.git.show(commit.hexsha)
-            
-            # Extract commit info
-            commit_info = {
-                "commit_hash": commit.hexsha,  # Store full hash
-                "commit_hash_display": f"Commit: {commit.hexsha[:8]}",
-                "commit_message": f"Message: {commit.message.strip()}",
-                "commit_author": f"Author: {commit.author.name} <{commit.author.email}>",
-                "commit_date": f"Date: {datetime.fromtimestamp(commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')}",
-                "git_diff": diff[:5000]  # Limit diff size
-            }
-            
-            state.update(commit_info)
-            logger.info(f"Parsed commit: {commit.hexsha[:8]}")
+                # Original commit-based parsing
+                if "commit_hash" in state:
+                    commit_hash = state["commit_hash"]
+                else:
+                    # Get latest commit from current repo
+                    commit = repo.head.commit
+                    commit_hash = str(commit.hexsha)
+                
+                # Get commit details
+                commit = repo.commit(commit_hash)
+                
+                # Get diff
+                if commit.parents:
+                    diff = repo.git.diff(commit.parents[0].hexsha, commit.hexsha)
+                else:
+                    # First commit
+                    diff = repo.git.show(commit.hexsha)
+                
+                # Extract commit info
+                commit_info = {
+                    "commit_hash": commit.hexsha,  # Store full hash
+                    "commit_hash_display": f"Commit: {commit.hexsha[:8]}",
+                    "commit_message": f"Message: {commit.message.strip()}",
+                    "commit_author": f"Author: {commit.author.name} <{commit.author.email}>",
+                    "commit_date": f"Date: {datetime.fromtimestamp(commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')}",
+                    "git_diff": diff[:5000]  # Limit diff size
+                }
+                
+                state.update(commit_info)
+                logger.info(f"Parsed commit: {commit.hexsha[:8]}")
             
         except Exception as e:
             logger.error(f"Error parsing Git diff: {e}")
@@ -862,34 +901,132 @@ class GitCommitSummarizer:
         except Exception as e:
             logger.error(f"Error processing commit: {e}")
             raise
+    
+    def process_wip(self, mode: str) -> Dict[str, Any]:
+        """Process WIP (Work in Progress) changes and generate summaries"""
+        initial_state = {"wip_mode": mode}
+        
+        try:
+            # Create cache key based on WIP mode and current working directory state
+            if self.cache_manager:
+                repo = git.Repo(self.base_dir)
+                
+                # Get current working directory state for cache key
+                if mode == 'all':
+                    # For 'all' mode, include both staged and unstaged changes
+                    try:
+                        # Get a hash of the current working directory state
+                        diff_output = repo.git.diff('HEAD')
+                        if not diff_output:
+                            diff_output = "no-changes"
+                        cache_key = f"wip_all:{hash(diff_output)}"
+                    except:
+                        cache_key = f"wip_all:timestamp:{datetime.now().isoformat()}"
+                else:
+                    # For 'staged' mode, only staged changes
+                    try:
+                        diff_output = repo.git.diff('--cached')
+                        if not diff_output:
+                            diff_output = "no-changes"
+                        cache_key = f"wip_staged:{hash(diff_output)}"
+                    except:
+                        cache_key = f"wip_staged:timestamp:{datetime.now().isoformat()}"
+                
+                # Check cache first
+                cached = self.cache_manager.exact_cache.get(cache_key)
+                if cached is not None:
+                    logger.info(f"Quick cache hit for WIP analysis ({mode})")
+                    return {
+                        'cache_hit': True,
+                        'output_files': cached.get('output_files', {}),
+                        'context_summary': cached.get('context_summary', ''),
+                        'brainlift_summary': cached.get('brainlift_summary', ''),
+                        'budget_check': {
+                            'estimated_tokens': 0,
+                            'estimated_cost': 0.0
+                        }
+                    }
+                
+                # Store cache key in state for later use
+                initial_state["cache_key"] = cache_key
+            
+            # Run the full workflow
+            result = self.graph.invoke(initial_state)
+            
+            # Cache the result if cache manager is available
+            if self.cache_manager and result.get('output_files') and initial_state.get('cache_key'):
+                cache_data = {
+                    'output_files': result['output_files'],
+                    'context_summary': result.get('context_summary', ''),
+                    'brainlift_summary': result.get('brainlift_summary', ''),
+                    'multi_agent_results': result.get('multi_agent_results', {})
+                }
+                self.cache_manager.exact_cache.set(
+                    initial_state['cache_key'],
+                    cache_data,
+                    ttl=3600  # 1 hour for WIP cache (shorter than commits)
+                )
+            
+            logger.info(f"Successfully processed WIP analysis ({mode})")
+            return result
+        except Exception as e:
+            logger.error(f"Error processing WIP analysis: {e}")
+            raise
 
 
 def main():
     """Main entry point for testing"""
     import sys
     
-    # Get commit hash from command line if provided
-    commit_hash = sys.argv[1] if len(sys.argv) > 1 else None
+    # Parse command line arguments
+    args = sys.argv[1:]
     
-    try:
-        summarizer = GitCommitSummarizer()
-        result = summarizer.process_commit(commit_hash)
+    # Check if this is a WIP analysis
+    if len(args) >= 2 and args[0] == '--wip':
+        wip_mode = args[1]  # 'all' or 'staged'
         
-        print("\n✅ Summary generation complete!")
-        print(f"Context log: {result['output_files']['context']}")
-        print(f"Brainlift: {result['output_files']['brainlift']}")
+        try:
+            summarizer = GitCommitSummarizer()
+            result = summarizer.process_wip(wip_mode)
+            
+            print(f"\n✅ WIP analysis ({wip_mode}) complete!")
+            print(f"Context log: {result['output_files']['context']}")
+            print(f"Brainlift: {result['output_files']['brainlift']}")
+            
+            if result.get('cache_hit'):
+                print("📦 Result was served from cache!")
+            
+            if result.get('budget_check'):
+                print(f"💰 Token estimate: {result['budget_check']['estimated_tokens']}")
+                print(f"💵 Cost estimate: ${result['budget_check']['estimated_cost']:.4f}")
+            
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
+            logger.error(f"Failed to generate WIP analysis: {e}")
+            sys.exit(1)
+    else:
+        # Original commit-based analysis
+        commit_hash = args[0] if args else None
         
-        if result.get('cache_hit'):
-            print("📦 Result was served from cache!")
-        
-        if result.get('budget_check'):
-            print(f"💰 Token estimate: {result['budget_check']['estimated_tokens']}")
-            print(f"💵 Cost estimate: ${result['budget_check']['estimated_cost']:.4f}")
-        
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-        logger.error(f"Failed to generate summaries: {e}")
-        sys.exit(1)
+        try:
+            summarizer = GitCommitSummarizer()
+            result = summarizer.process_commit(commit_hash)
+            
+            print("\n✅ Summary generation complete!")
+            print(f"Context log: {result['output_files']['context']}")
+            print(f"Brainlift: {result['output_files']['brainlift']}")
+            
+            if result.get('cache_hit'):
+                print("📦 Result was served from cache!")
+            
+            if result.get('budget_check'):
+                print(f"💰 Token estimate: {result['budget_check']['estimated_tokens']}")
+                print(f"💵 Cost estimate: ${result['budget_check']['estimated_cost']:.4f}")
+            
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
+            logger.error(f"Failed to generate summaries: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

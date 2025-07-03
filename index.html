@@ -201,7 +201,8 @@
             padding: var(--spacing-lg);
             margin-bottom: var(--spacing-xl);
             position: relative;
-            overflow: hidden;
+            overflow: visible;
+            z-index: 100; /* Ensure controls section creates proper stacking context */
             box-shadow: 
                 var(--shadow-lg),
                 inset 0 1px 0 rgba(225, 232, 237, 0.03);
@@ -323,6 +324,8 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: var(--spacing-lg);
+            position: relative;
+            z-index: 1; /* Lower z-index to allow dropdown to appear above */
         }
         
         .output-panel {
@@ -646,6 +649,95 @@
         .git-controls {
             display: flex;
             gap: var(--spacing-sm);
+        }
+
+        /* WIP Analysis Dropdown */
+        .wip-analysis-dropdown {
+            position: relative;
+            display: inline-block;
+            z-index: 1000;
+        }
+
+        .dropdown-toggle {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .dropdown-arrow {
+            font-size: 0.8em;
+            transition: transform 0.2s ease;
+            margin-left: 4px;
+        }
+
+        .wip-analysis-dropdown.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 280px;
+            background: rgba(26, 29, 33, 0.95);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+            z-index: 99999;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            margin-top: 4px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-item {
+            padding: var(--spacing-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid var(--color-border);
+            user-select: none;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .dropdown-item:first-child {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(64, 123, 255, 0.1);
+            border-color: rgba(64, 123, 255, 0.3);
+        }
+
+        .dropdown-item:active {
+            background: rgba(64, 123, 255, 0.2);
+        }
+
+        .dropdown-item span {
+            display: block;
+            font-weight: 500;
+            color: var(--foam-100);
+            font-size: var(--font-size-sm);
+        }
+
+        .dropdown-item small {
+            display: block;
+            color: var(--foam-300);
+            font-size: var(--font-size-xs);
+            margin-top: 4px;
+            line-height: 1.3;
         }
 
         #commitMessageContainer {
@@ -1045,6 +1137,8 @@
             grid-template-columns: 1fr 1fr;
             gap: var(--spacing-lg);
             margin-bottom: var(--spacing-xl);
+            position: relative;
+            z-index: 1; /* Lower z-index to allow dropdown to appear above */
         }
         
         .stats-panel {
@@ -1265,9 +1359,22 @@
                 <button id="generateBtn" class="button">
                     <span>Generate Summary</span>
                 </button>
-                <button id="analyzeWipBtn" class="button-secondary">
-                    <span>📝 Analyze WIP</span>
-                </button>
+                <div class="wip-analysis-dropdown">
+                    <button id="analyzeWipBtn" class="button dropdown-toggle">
+                        <span>📝 Analyze WIP</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="dropdown-menu" id="wipDropdownMenu">
+                        <div class="dropdown-item" data-mode="all">
+                            <span>📄 All Changes</span>
+                            <small>All modified files (staged + unstaged)</small>
+                        </div>
+                        <div class="dropdown-item" data-mode="staged">
+                            <span>📋 Staged Changes</span>
+                            <small>Only files staged for commit</small>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Git controls -->
@@ -2078,6 +2185,44 @@
             }
         }
 
+        // WIP Analysis function
+        async function analyzeWip(mode) {
+            try {
+                analyzeWipBtn.disabled = true;
+                const modeText = mode === 'all' ? 'All Changes' : 'Staged Changes';
+                analyzeWipBtn.textContent = `Analyzing ${modeText}...`;
+                
+                // Show loading skeletons
+                showSkeleton(leftPanelOutput);
+                showSkeleton(rightPanelOutput);
+                
+                const result = await window.electronAPI.analyzeWip(mode);
+                
+                if (result.success) {
+                    showStatus(`WIP analysis (${modeText}) completed successfully!`, 'success');
+                    
+                    // Poll for new files after a delay
+                    setTimeout(() => {
+                        loadLatestFiles();
+                    }, 3000);
+                    
+                    // Also load immediately in case of cache hit
+                    setTimeout(() => {
+                        loadLatestFiles();
+                    }, 500);
+                } else {
+                    showStatus(`WIP analysis error: ${result.error}`, 'error');
+                    loadLatestFiles(); // Restore previous content
+                }
+            } catch (error) {
+                showStatus(`WIP analysis error: ${error.message}`, 'error');
+                loadLatestFiles(); // Restore previous content
+            } finally {
+                analyzeWipBtn.disabled = false;
+                analyzeWipBtn.innerHTML = '<span>📝 Analyze WIP</span><span class="dropdown-arrow">▼</span>';
+            }
+        }
+
         function cancelCommitMessage() {
             commitMessageContainer.style.display = 'none';
             commitMessageText.value = '';
@@ -2815,11 +2960,69 @@
             }
         });
         
+        // WIP Analysis Dropdown
+        const wipDropdownMenu = document.getElementById('wipDropdownMenu');
+        const wipDropdownContainer = document.querySelector('.wip-analysis-dropdown');
+        
+        // Toggle dropdown
+        analyzeWipBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Close any other open dropdowns first
+            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                if (menu !== wipDropdownMenu) {
+                    menu.classList.remove('show');
+                }
+            });
+            
+            // Toggle this dropdown
+            const isOpen = wipDropdownMenu.classList.contains('show');
+            if (isOpen) {
+                wipDropdownMenu.classList.remove('show');
+                wipDropdownContainer.classList.remove('open');
+            } else {
+                wipDropdownMenu.classList.add('show');
+                wipDropdownContainer.classList.add('open');
+            }
+            console.log('Dropdown toggled:', !isOpen);
+        });
+        
+        // Handle dropdown selection
+        wipDropdownMenu.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const dropdownItem = e.target.closest('.dropdown-item');
+            if (dropdownItem) {
+                const mode = dropdownItem.getAttribute('data-mode');
+                console.log('Selected mode:', mode);
+                analyzeWip(mode);
+                wipDropdownMenu.classList.remove('show');
+                wipDropdownContainer.classList.remove('open');
+            }
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.wip-analysis-dropdown')) {
+                wipDropdownMenu.classList.remove('show');
+                wipDropdownContainer.classList.remove('open');
+            }
+        });
+        
+        // Close dropdown on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && wipDropdownMenu.classList.contains('show')) {
+                wipDropdownMenu.classList.remove('show');
+                wipDropdownContainer.classList.remove('open');
+            }
+        });
+
         // Git Control Event Listeners
         commitBtn.addEventListener('click', generateCommitMessage);
         pushBtn.addEventListener('click', pushChanges);
         pullBtn.addEventListener('click', pullChanges);
-        analyzeWipBtn.addEventListener('click', generateSummary); // Same as generate button for now
         acceptCommitBtn.addEventListener('click', commitChanges);
         editCommitBtn.addEventListener('click', () => {
             commitMessageText.focus();

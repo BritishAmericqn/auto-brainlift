@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Generate summary (manual trigger)
   generateSummary: (commitHash) => ipcRenderer.invoke('generate-summary', commitHash),
   
+  // Analyze WIP (work in progress)
+  analyzeWip: (mode) => ipcRenderer.invoke('analyze-wip', mode),
+  
   // Get latest generated files
   getLatestFiles: () => ipcRenderer.invoke('get-latest-files'),
   
