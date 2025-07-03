@@ -1,5 +1,9 @@
 # 🧠 Auto-Brainlift
 
+[![Latest Release](https://img.shields.io/github/v/release/benjaminroyston/auto-brainlift)](https://github.com/benjaminroyston/auto-brainlift/releases)
+[![Downloads](https://img.shields.io/github/downloads/benjaminroyston/auto-brainlift/total)](https://github.com/benjaminroyston/auto-brainlift/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Automatically generate AI-powered development summaries after every Git commit. Auto-Brainlift creates two types of documentation:
 - **context.md**: Technical, structured summaries for AI coding assistants
 - **brainlift.md**: Personal, reflective journal entries about your coding journey
@@ -33,51 +37,51 @@ See [PHASE2_CACHING_GUIDE.md](PHASE2_CACHING_GUIDE.md) for full details.
 - 📊 **Analytics Dashboard**: Real-time cache performance and cost metrics
 - 🔐 **Project Isolation**: Complete data separation between projects
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
-- macOS (tested on 11.0+)
-- Node.js 16+
-- Python 3.8+
-- Git
-- OpenAI API key
+### Download & Install (Recommended)
 
-### Installation
+#### macOS
+1. Download the latest `.dmg` from [Releases](https://github.com/benjaminroyston/auto-brainlift/releases)
+2. Double-click to mount the DMG
+3. Drag Auto-Brainlift to your Applications folder
+4. **First Launch**: Right-click the app → Open (to bypass Gatekeeper)
+
+#### Windows
+1. Download the latest `.exe` installer from [Releases](https://github.com/benjaminroyston/auto-brainlift/releases)
+2. Run the installer
+3. Follow the installation wizard
+
+#### Linux
+1. Download the latest `.AppImage` from [Releases](https://github.com/benjaminroyston/auto-brainlift/releases)
+2. Make it executable: `chmod +x Auto-Brainlift-*.AppImage`
+3. Run: `./Auto-Brainlift-*.AppImage`
+
+### System Requirements
+- **Python 3.8+** must be installed on your system
+- **OpenAI API Key** (get one at [platform.openai.com](https://platform.openai.com))
+
+### Development Setup
+
+If you want to run from source:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/auto-brainlift.git
+   git clone https://github.com/benjaminroyston/auto-brainlift.git
    cd auto-brainlift
    ```
 
-2. **Install Node dependencies**
+2. **Install dependencies**
    ```bash
    npm install
-   ```
-
-3. **Set up Python environment**
-   ```bash
    python3 -m venv venv
    source venv/bin/activate  # On macOS/Linux
    pip install -r requirements.txt
-   # Or use the update script:
-   ./update_dependencies.sh
    ```
 
-4. **Configure OpenAI API**
+3. **Run in development mode**
    ```bash
-   cp .env.template .env
-   # Edit .env and add your OpenAI API key
-   ```
-
-5. **Install Git hook (optional)**
-   ```bash
-   ./setup_git_hook.sh
-   ```
-
-6. **Set up retry cron job (optional)**
-   ```bash
-   ./setup_retry_cron.sh
+   npm start
    ```
 
 ## Usage
@@ -289,6 +293,30 @@ See [CURSOR_CHAT_INTEGRATION.md](CURSOR_CHAT_INTEGRATION.md) for setup and usage
 
 For the complete roadmap, see [EXPANSION_PLAN.md](EXPANSION_PLAN.md).
 
+## 🔨 Building from Source
+
+### Prerequisites
+- Node.js 18+
+- Python 3.8+
+- ImageMagick (for icon generation): `brew install imagemagick`
+
+### Build Process
+
+```bash
+# Generate icons (first time only)
+cd build && ./generate-icons.sh && cd ..
+
+# Build for your platform
+npm run build:mac    # Creates DMG for macOS
+npm run build:win    # Creates EXE for Windows
+npm run build:linux  # Creates AppImage for Linux
+
+# Or use the release script
+./release.sh 1.0.3  # Automates the entire process
+```
+
+Build outputs will be in the `dist/` directory. See [PRODUCTION_BUILD_GUIDE.md](PRODUCTION_BUILD_GUIDE.md) for detailed instructions.
+
 ## Contributing
 
 1. Fork the repository
@@ -302,6 +330,14 @@ For the complete roadmap, see [EXPANSION_PLAN.md](EXPANSION_PLAN.md).
 - Keep the architecture simple and maintainable
 - Test edge cases thoroughly
 - Document any new features
+
+### Creating a Release
+
+1. Update version: `npm version patch`
+2. Build: `./release.sh <version>`
+3. Test the build locally
+4. Push tags: `git push && git push origin v<version>`
+5. Create GitHub release with the artifacts from `dist/`
 
 ## License
 

@@ -1,3 +1,14 @@
+# Build artifacts
+dist/
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.zip
+build/*.icns
+build/*.ico
+build/icons/
+
 # Logs
 logs
 *.log

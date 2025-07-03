@@ -1,4 +1,15 @@
-# Auto-Brainlift v1.0.2
+# Release Notes
+
+## Version 1.0.3 (Upcoming)
+- 🚀 **Production Build Support**: Added professional DMG installer for macOS
+- 📦 **Multi-Platform Builds**: Support for Windows (EXE), Linux (AppImage, DEB)
+- 🎨 **Icon Generation**: Automated icon creation for all platforms
+- 📝 **Improved Release Process**: Automated release script with checksums
+- 🔧 **Build Configuration**: Enhanced electron-builder settings
+- 📖 **Documentation**: Comprehensive build and release guides
+- 🏷️ **GitHub Releases**: Ready for distribution via GitHub Releases
+
+## Version 1.0.2
 
 🚀 **Cursor Rules Integration Release**
 

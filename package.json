@@ -1,7 +1,7 @@
 {
   "name": "auto-brainlift",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Automatically generate development summaries after Git commits",
   "main": "electron/main.js",
   "scripts": {
@@ -11,7 +11,10 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "build:linux": "electron-builder --linux",
+    "dist": "npm run build:mac",
+    "dist:all": "npm run build:mac && npm run build:win && npm run build:linux",
+    "release": "electron-builder --publish=always"
   },
   "keywords": [
     "electron",
@@ -32,8 +35,10 @@
   "build": {
     "appId": "com.autobrainlift.app",
     "productName": "Auto-Brainlift",
+    "copyright": "Copyright © 2024 Auto-Brainlift Team",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "files": [
       "electron/**/*",
@@ -42,28 +47,84 @@
       "agents/**/*",
       "prompts/**/*",
       "package.json",
+      "requirements.txt",
       "!**/__pycache__",
       "!venv",
       "!*.pyc",
       "!.git",
       "!.gitignore",
-      "!node_modules/.cache"
+      "!node_modules/.cache",
+      "!dist",
+      "!build/generate-icons.sh"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "build/icon.png"
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
+    "dmg": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "title": "${productName} ${version}",
+      "icon": "build/icon.icns",
+      "iconSize": 100,
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "background": "build/background.png"
     },
     "win": {
       "target": "nsis",
-      "icon": "build/icon.png"
+      "icon": "build/icon.ico"
     },
     "linux": {
-      "target": ["AppImage"],
-      "icon": "build/icon.png"
+      "target": ["AppImage", "deb"],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "desktop": {
+        "Name": "Auto-Brainlift",
+        "Comment": "AI-powered Git commit summaries",
+        "Categories": "Development;Utility;"
+      }
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
     }
   }
 }
