@@ -784,11 +784,9 @@
 
         /* Commit message container adjustments */
         #commitMessageContainer {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
+            position: relative;
             margin-top: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
             width: 100%;
             background: rgba(26, 29, 33, 0.95);
             border: 1px solid var(--color-border);
@@ -796,7 +794,43 @@
             padding: var(--spacing-lg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            z-index: 500;
+            box-shadow: 0 8px 32px rgba(12, 25, 41, 0.4);
+        }
+        
+        #commitMessageContainer h3 {
+            margin-top: 0;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+        }
+        
+        #commitMessageText {
+            width: 100%;
+            min-height: 120px;
+            padding: var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: rgba(42, 46, 52, 0.5);
+            color: var(--color-text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: var(--font-size-sm);
+            resize: vertical;
+            margin-bottom: var(--spacing-md);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        #commitMessageText:focus {
+            outline: none;
+            border-color: var(--ocean-500);
+            box-shadow: 0 0 0 3px rgba(45, 74, 124, 0.2);
+        }
+        
+        .commit-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            justify-content: flex-end;
         }
 
         /* WIP Analysis Dropdown */
@@ -1626,17 +1660,18 @@
                     </button>
                 </div>
             </div>
-            
-            <!-- Commit message container spans both sections -->
-            <div id="commitMessageContainer" style="display: none;">
-                <textarea id="commitMessageText" placeholder="AI-generated commit message will appear here..."></textarea>
-                <div class="commit-actions">
-                    <button id="acceptCommitBtn" class="button">Accept & Commit</button>
-                    <button id="editCommitBtn" class="button-secondary">Edit Message</button>
-                    <button id="cancelCommitBtn" class="button-secondary">Cancel</button>
-                </div>
-            </div>
         </section>
+        
+        <!-- Commit message container appears below controls -->
+        <div id="commitMessageContainer" style="display: none;">
+            <h3>Generated Commit Message</h3>
+            <textarea id="commitMessageText" placeholder="AI-generated commit message will appear here..."></textarea>
+            <div class="commit-actions">
+                <button id="acceptCommitBtn" class="button">Accept & Commit</button>
+                <button id="editCommitBtn" class="button-secondary">Edit Message</button>
+                <button id="cancelCommitBtn" class="button-secondary">Cancel</button>
+            </div>
+        </div>
         
         <!-- Cache & Budget Stats -->
         <section class="stats-section">
