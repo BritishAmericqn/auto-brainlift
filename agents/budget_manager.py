@@ -1,5 +1,5 @@
 """
-Budget manager for tracking token usage and costs
+Budget manager for tracking token usage and costs. This section of the comment is for testing the git stuff, you can ignore this sentence.
 """
 
 import json
