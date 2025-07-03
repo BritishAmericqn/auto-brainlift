@@ -8,7 +8,6 @@ dist/
 build/*.icns
 build/*.ico
 build/icons/
-
 # Logs
 logs
 *.log
@@ -43,9 +42,6 @@ __pycache__/
 # Auto-Brainlift
 .processed_commits
 .retry_queue.json
-brainlifts/
-context_logs/
-error_logs/
 # Build artifacts
 build/
 dist/
@@ -60,7 +56,6 @@ dist/
 python_wrapper.py
 run_agent.sh
 run_agent.bat
-
 # Test files with potential fake tokens
 test_*.js
 verify_implementation.js

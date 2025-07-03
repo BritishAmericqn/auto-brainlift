@@ -737,23 +737,43 @@
             background: transparent;
             border: 1px solid var(--color-border);
             border-radius: 6px;
-            padding: var(--spacing-xs) var(--spacing-sm);
+            padding: 0;
             cursor: pointer;
-            transition: all var(--transition-base);
+            transition: background var(--transition-base), border-color var(--transition-base);
             color: var(--foam-300);
             font-size: 16px;
             line-height: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 32px;
+            width: 32px;
             height: 32px;
+            position: relative;
+            overflow: hidden;
         }
 
         .button-icon:hover {
             background: rgba(45, 74, 124, 0.1);
             border-color: var(--ocean-500);
+        }
+        
+        .button-icon .icon {
+            width: 14px;
+            height: 14px;
+            display: block;
+            transition: transform 0.3s ease;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        
+        .button-icon:hover .icon {
             transform: rotate(180deg);
+        }
+        
+        .button-icon:active .icon {
+            transform: rotate(360deg);
+            transition: transform 0.6s ease;
         }
 
         /* File staging controls */
@@ -1807,6 +1827,11 @@
             animation: rotate 1s linear infinite;
         }
         
+        /* Refresh button specific animation */
+        .button-icon.refreshing .icon {
+            animation: rotate 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        
         /* Panel icon styles */
         .panel-icon {
             width: 24px;
@@ -2003,8 +2028,7 @@
                     </div>
                     <button id="refreshStatusBtn" class="button-icon" title="Refresh status">
                         <svg class="icon" viewBox="0 0 16 16" fill="none">
-                            <path d="M14 8A6 6 0 104.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                            <path d="M4 1v3h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <path d="M11.5 3.5a5 5 0 11-7 7 5 5 0 017-7M12 3v3h-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                         </svg>
                     </button>
                 </div>
@@ -3947,7 +3971,10 @@
         
         // New staging control event listeners
         refreshStatusBtn.addEventListener('click', () => {
-            updateGitStatus();
+            refreshStatusBtn.classList.add('refreshing');
+            updateGitStatus().finally(() => {
+                refreshStatusBtn.classList.remove('refreshing');
+            });
         });
         
         stageAllBtn.addEventListener('click', stageAllFiles);
