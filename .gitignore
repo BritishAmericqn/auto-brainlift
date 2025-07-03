@@ -49,3 +49,7 @@ dist/
 python_wrapper.py
 run_agent.sh
 run_agent.bat
+
+# Test files with potential fake tokens
+test_*.js
+verify_implementation.js
