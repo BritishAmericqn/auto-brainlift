@@ -30,7 +30,8 @@
   },
   "dependencies": {
     "electron-settings": "^4.0.4",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "@slack/web-api": "^6.11.2"
   },
   "build": {
     "appId": "com.autobrainlift.app",
@@ -46,6 +47,7 @@
       "public/**/*",
       "agents/**/*",
       "prompts/**/*",
+      "integrations/**/*",
       "package.json",
       "requirements.txt",
       "!**/__pycache__",
