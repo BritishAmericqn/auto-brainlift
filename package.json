@@ -1,7 +1,7 @@
 {
   "name": "auto-brainlift",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Automatically generate development summaries after Git commits",
   "main": "electron/main.js",
   "scripts": {
